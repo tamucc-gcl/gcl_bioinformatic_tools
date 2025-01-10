@@ -23,10 +23,11 @@ DESCRIBE_DATA - ADJUST
 Data files:
 
 * data/*R[12]_[0-9]{3}.fastq.gz
-* [data/paired_demuxed_barcode.tsv](data/paired_demuxed_barcode.tsv)
-* [data/sample.map](data/sample.map)
-* [data/metadata.csv](data/metadata.csv)
 
 Parameter files:
 
 * [metabarcode_rainbowbridge_paired.yml](metabarcode_rainbowbridge_paired.yml)
+* [paired_demuxed_barcode.tsv](paired_demuxed_barcode.tsv)
+* [sample.map](sample.map)
+* [metadata.csv](metadata.csv)
+
