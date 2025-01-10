@@ -1,0 +1,56 @@
+#https://github.com/mhoban/rainbow_bridge - description of parameters
+
+metadata: PATH_TO_METADATA #At least two columns with sample IDs in both - name columns "sample", "sample_name"
+barcode: PATH_TO_BARCODE
+sample-map: PATH_TO_SAMPLEIDS
+reads: PATH_TO_FASTQ
+blast-db: /scratch/group/p.bio240270.000/databases/midori2_custom_2020-06-15_blast_sp_uniq/midori2_custom_blast_sp_uniq #Or change blast DB to use
+
+demultiplexed-by: index
+publish-mode: symlink
+fastqc: true
+paired: true
+r1: R1
+r2: R2
+
+no-pcr: true
+
+denoiser: "vsearch"
+min-abundance: 8
+alpha: 2.0
+zotu-identity: 0.97
+
+blast: true
+#blast-taxdb: /scratch/group/p.bio240270.000/databases/midori2_custom_2020-06-15_blast_sp_uniq/taxid_map
+max-query-results: 1000
+qcov: 50
+percent-identity: 50
+evalue: 0.001
+
+lulu: true
+lulu-min-ratio-type: 'min'
+lulu-min-ratio: 1
+lulu-min-match: 84
+lulu-min-rc: 0.95
+
+collapse-taxonomy: true
+lca-qcov: 90
+lca-pid: 90
+lca-diff: 0.75
+lca-filter-max-qcov: true
+dropped: "LCA_dropped"
+lca-taxon-filter: "uncultured|environmental sample|clone|synthetic|OL863216|OR892742" #Remove two ticks that are actually samples of the cow blood
+
+taxon-priority: lca
+
+#insect: mlCOIint
+#insect-threshold: 0.8
+#insect-offset: 0
+#insect-min-count: 5
+#insect-ping: 0.98
+
+phyloseq: true
+taxonomy: lca #combined when insect works
+no-tree: true
+
+singularity-cache: /scratch/group/p.bio240270.000/software
