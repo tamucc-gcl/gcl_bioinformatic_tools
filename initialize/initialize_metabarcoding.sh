@@ -5,7 +5,7 @@ dirname=${1}
 
 
 #Scripts
-mkdir ${dirname}/scripts
+mkdir -p ${dirname}/scripts
 cp ${master_dir}/scripts/run_rainbowBridge.sh ${dirname}/scripts
 cp ${master_dir}/scripts/summarise_rainbowbridge.R ${dirname}/scripts
 
@@ -14,8 +14,8 @@ cp ${master_dir}/initial_yamls/metabarcode_rainbowbridge_paired.yml ${dirname}
 echo "Rename and fill in file-paths for YAML found ${dirname}"
 
 #Build Folder Structure
-mkdir ${dirname}/data
-mkdir ${dirname}/output
+mkdir -p ${dirname}/data
+mkdir -p ${dirname}/output
 cp ${master_dir}/initial_readmes/metabarcoding_readme.md ${dirname}/REAME.md
 
 # Instructions for next steps
