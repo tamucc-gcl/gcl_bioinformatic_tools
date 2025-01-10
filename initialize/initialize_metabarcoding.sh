@@ -20,6 +20,7 @@ cp ${master_dir}/readmes/metabarcoding_readme.md ${dirname}/README.md
 touch ${dirname}/commands_run.md
 
 # Instructions for next steps
+echo "Any code run copy the lines to : ${dirname}/commands_run.md"
 echo "Create metadata file if none exists"
 echo "Populate Data"
 echo "Personalize ReadME"
