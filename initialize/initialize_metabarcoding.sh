@@ -15,6 +15,7 @@ echo "Rename and fill in file-paths for YAML found ${dirname}"
 
 #Build Folder Structure
 mkdir -p ${dirname}/data
+mkdir -p ${dirname}/intermediate_files
 mkdir -p ${dirname}/output
 cp ${master_dir}/readmes/metabarcoding_readme.md ${dirname}/README.md
 touch ${dirname}/commands_run.md
@@ -32,7 +33,7 @@ echo ""
 echo ""
 echo ""
 echo "After above run by cd to ${dirname} and use:"
-echo "sbatch scripts/run_rainbowBridge.sh metabarcode_rainbowbridge_paired.yml output"
+echo "sbatch scripts/run_rainbowBridge.sh metabarcode_rainbowbridge_paired.yml intermediate_files"
 echo ""
 echo ""
 echo ""
