@@ -25,7 +25,7 @@ echo "Any code run copy the lines to : ${dirname}/commands_run.md"
 echo "Create metadata file if none exists"
 echo "Populate Data"
 echo "Update YAML to correct filepaths"
-echo "Personalize ReadME"
+echo "Personalize ReadME - changes where readme says 'ADJUST'"
 echo "Create as github repository"
 echo "Create as DVC repository"
 
