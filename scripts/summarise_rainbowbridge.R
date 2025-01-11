@@ -3,11 +3,14 @@
 if(!interactive()){
   args <- commandArgs(trailingOnly = TRUE)
   rainbowbridge_dir <- args[1]
+  param_yaml <- args[2]
 } else {
   # rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/test_run'
   rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/full_run_v1/'
+  param_yaml <- 'paired_demuxed.yml'
 }
 
+.libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 setwd(rainbowbridge_dir)
 
 library(ShortRead) |> suppressMessages() |> suppressWarnings()
@@ -23,7 +26,7 @@ library(ggnested) |> suppressMessages() |> suppressWarnings()
 # read_delim('output/taxonomy/lca/qcov70_pid70_diff1/lca_intermediate.tsv') %>%
 #   filter(zotu == 'Zotu1')
 
-rainbowbridge_yaml <- read_yaml('paired_demuxed.yml')
+rainbowbridge_yaml <- read_yaml(param_yaml)
 zotus_final <- read_delim('output/final/zotu_table_final_curated.tsv', 
                           show_col_types = FALSE)
 

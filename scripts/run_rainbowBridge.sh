@@ -70,7 +70,7 @@ nextflow run -params-file $PARAMSFILE /scratch/group/p.bio240270.000/software/ra
 
 #Summarize and produce various figures of RainbowBridge Outputs
 module load Anaconda3; source activate r_env
-Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd)
+Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd) ${PARAMSFILE}
 
 # Record the end time
 end_time=$(date +%s)
