@@ -32,7 +32,8 @@ echo "Downloading: ${midori_url}"
 conda deactivate
 
 #2 - Download the FASTA File
-cd /scratch/group/p.bio240270.000/databases/midori2
+mkdir -p /scratch/group/p.bio240270.000/databases/midori2_latest
+cd /scratch/group/p.bio240270.000/databases/midori2_latest
 wget -c ${midori_url}
 midori_dirty=$(realpath ${midori_url##*/})
 midori_cleaned=${midori_dirty%.fasta.gz}_cleaned.fasta
