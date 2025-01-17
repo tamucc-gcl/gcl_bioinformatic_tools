@@ -72,6 +72,20 @@ nextflow run -params-file $PARAMSFILE /scratch/group/p.bio240270.000/software/ra
 module load Anaconda3; source activate r_env
 Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd) ${PARAMSFILE}
 
+#Move outputs from intermediate to outputs
+mkdir -p ../output/rainbow_bridge
+
+mv *html ../output/rainbow_bridge/
+mv *png ../output/rainbow_bridge/
+mv *.csv ../output/rainbow_bridge/
+cp -Lr output/phyloseq/phyloseq.rds ../output/rainbow_bridge/
+cp -Lr output/final/zotu_table_final_curated.tsv ../output/rainbow_bridge/
+
+mkdir -p ../output/fastqc/initial
+mkdir -p ../output/fastqc/filtered
+cp -Lr output/fastqc/initial/*html ../output/fastqc/initial/
+cp -Lr output/fastqc/filtered/*html ../output/fastqc/filtered/
+
 # Record the end time
 end_time=$(date +%s)
 echo ""

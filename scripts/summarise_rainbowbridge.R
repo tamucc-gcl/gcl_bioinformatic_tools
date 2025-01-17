@@ -4,13 +4,13 @@ if(!interactive()){
   args <- commandArgs(trailingOnly = TRUE)
   rainbowbridge_dir <- args[1]
   param_yaml <- args[2]
+  .libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 } else {
   # rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/test_run'
   rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/full_run_v1/'
   param_yaml <- 'paired_demuxed.yml'
 }
 
-.libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 setwd(rainbowbridge_dir)
 
 library(ShortRead) |> suppressMessages() |> suppressWarnings()
@@ -18,6 +18,7 @@ library(yaml) |> suppressMessages() |> suppressWarnings()
 library(tidyverse) |> suppressMessages() |> suppressWarnings()
 library(ggtext) |> suppressMessages() |> suppressWarnings()
 library(ggnested) |> suppressMessages() |> suppressWarnings()
+library(SummarizedExperiment) |> suppressMessages() |> suppressWarnings()
 
 # lca_table <- read_delim('output/taxonomy/lca/qcov70_pid70_diff1/lca_taxonomy.tsv')
 # zotu_table <- read_delim('output/zotus/zotu_table.tsv')
@@ -261,6 +262,14 @@ samples <- read_delim(rainbowbridge_yaml$`sample-map`,
   get_sample_readcounts(rainbowbridge_yaml$reads) %>%
   mutate(in_final = sample_id %in% colnames(zotus_final))
 
+samples %>%
+  select(sample_id, 
+         reads = reads.r1, 
+         in_final) %>%
+  mutate(notes = if_else(in_final, NA_character_, 'Removed from Further Analyses'),
+         .keep = 'unused') %>%
+  write_csv('sample_sequencing_summary.csv', na = '')
+
 sample_filtering_plot <- samples %>%
   ggplot(aes(x = !in_final, y = reads.r1)) +
   geom_boxplot() +
@@ -278,23 +287,33 @@ sample_filtering_plot <- samples %>%
                      limits = c(1, NA)) +
   labs(x = 'Samples Removed Due to lack of Reads',
        y = 'log<sub>10</sub>(# Reads)') +
-  theme_classic(base_size = 16) +
+  theme_classic(base_size = 12) +
   theme(axis.title.x = element_markdown(),
-        axis.title.y = element_markdown())
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank())
 ggsave('sample_filtering.png', 
        plot = sample_filtering_plot,
        height = 7,
        width = 7)
 
 reads_per_sample_plot <- samples %>%
+  mutate(sample_id = fct_reorder(sample_id, reads.r1)) %>%
   ggplot(aes(y = sample_id, x = reads.r1)) +
   geom_col() + 
-  scale_x_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(labels = scales::comma_format(),
+                     trans = scales::log10_trans()) +
   labs(y = NULL,
        x = 'log<sub>10</sub>(# Reads)') +
   theme_classic(base_size = 12) +
   theme(axis.title.x = element_markdown(),
-        axis.title.y = element_markdown())
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank())
 ggsave('reads_per_sample.png', 
        plot = reads_per_sample_plot,
        height = 15,
@@ -330,29 +349,32 @@ sample_composition <- zotus_final %>%
   filter(n_reads > 0) 
 
 
+
 sample_composition_plot <- sample_composition %>%
-  ggnested_jds(aes(x = sample_id, y = n_reads, 
+  mutate(sample_id = fct_reorder(sample_id, n_reads)) %>%
+  ggnested_jds(aes(y = sample_id, x = n_reads, 
                    main_group = class, sub_group = lowest_level),
-                   legend_labeling = 'sub', legend_title = 'Lowest Taxonomic\nClassification',
-                   main_keys = TRUE, nested_aes = c("fill"), 
-                   gradient_type = 'both',
-                   NA_option = 'black') +
+               legend_labeling = 'sub', legend_title = 'Lowest Taxonomic\nClassification',
+               main_keys = TRUE, nested_aes = c("fill"), 
+               gradient_type = 'both',
+               NA_option = 'black') +
   geom_col(position = 'fill') +
-  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_continuous(labels = scales::percent_format()) +
   guides(fill = guide_legend(ncol = 1)) +
   labs(x = NULL, 
        y = 'Relative Number of Reads (%)') +
-  theme_classic() +
-  theme(legend.position = 'right',
-        legend.text = element_markdown(),
+  theme_classic(base_size = 12) +
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown(),
         panel.background = element_rect(colour = 'black'),
-        legend.key = element_blank(),
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank())
 
 ggsave('sample_composition.png', 
        plot = sample_composition_plot,
-       height = 7,
-       width = 15)
+       height = 15,
+       width = 7)
 
 #### Summarize BLAST -> Taxonomy ####
 # tmp <- lca_taxonomy %>%

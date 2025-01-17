@@ -11,7 +11,7 @@ Repo Structure:
 
 * data (Original Fastq sequence files with metadata and sample-mapping files - stored using [DVC](https://dvc.org/))
 * [scripts](scripts) (Scripts and code used to analyze data)
-* intermediate_files (modified fastq if any, along with rainbow_bridge working outputs - stored using [DVC](https://dvc.org/))
+* intermediate_files (modified fastq if any, along with rainbow_bridge working outputs - not tracked, reproducable with data and scripts)
 * [output](output) (Results)
 
 All commands run in directory: [commands_run.md](commands_run.md)
@@ -71,3 +71,32 @@ NOT DONE YET - TO EDIT
 * Bias Toward Model or Economically Important Species: The database may be skewed toward species of greater economic or scientific interest, leaving gaps in representation for other taxa.
 
 ## Results
+
+### Sequencing QC
+[Pre-Filtering](output/fastqc/initial/multiqc_report.html) - Must download to view
+
+[Post-Filtering](output/fastqc/filtered/multiqc_report.html) - Must download to view
+
+| ![Reads per Sample](output/rainbow_bridge/reads_per_sample.png "Reads per Sample") |
+|:--:| 
+| Number of Reads sequenced (x-axis - log<sub>10</sub> transformed) in each sample (y-axis). Download Table with number of reads in each sample [here](output/rainbow_bridge/sample_sequencing_summary.csv). |
+
+| ![Sample Filtering](output/rainbow_bridge/sample_filtering.png "Sample Filtering") |
+|:--:| 
+| Boxplot comparing the number of reads in samples removed due to lack of reads (TRUE) to those which were kept for future analysis (FALSE). The numbers show the number of samples in each category with the sample names for samples removed for low numbers of sequences underneath. |
+
+### Metabarcoding Results
+[Parameter Settings](metabarcode_rainbowbridge_paired.yml)
+
+| Taxonomic Composition across all samples by number of: | reads | zOTUs |
+|:--:|:--:|:--:|
+| Download to View | [Read Composition](output/rainbow_bridge/taxonomy_nReads.html) | [zOTU Composition](output/rainbow_bridge/taxonomy_nZOTU.html) |
+
+| ![Sample Composition](output/rainbow_bridge/sample_composition.png "Sample Composition") |
+|:--:| 
+| Taxonomic Composition of each sample (x-axis, percentage of classified reads) in each sample (y-axis, sorted by the number of reads) showing the lowest taxonomic classification of each zOTU based on the LCA algorithm using these [parameters](metabarcode_rainbowbridge_paired.yml). In the legend the letter preceeding the taxon name indicates the taxonomic level (i.e. "g_" indicates genus level identification). |
+
+### Download Metabarcoding Results for Further Analysis
+| Data Table | Phyloseq RDS |
+|:--:|:--:|
+| [zOTU x Sample Table](output/rainbow_bridge/zotu_table_final_curated.tsv) | [Phyloseq Object](output/rainbow_bridge/phyloseq.rds) |
