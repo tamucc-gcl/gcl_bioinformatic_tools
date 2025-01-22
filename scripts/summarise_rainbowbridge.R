@@ -65,7 +65,7 @@ get_sample_readcounts <- function(sample_df, sample_dir){
               suffix = c('.r1', '.r2'))
 }
 
-output_sunburst <- function(zotu_data, sample_names, yvar, outfile){
+output_sunburst_OLD <- function(zotu_data, sample_names, yvar, outfile){
   ## Make the sunburst plot
   
   #yvar can be either "n_zotu" or "total_reads"
@@ -123,6 +123,42 @@ output_sunburst <- function(zotu_data, sample_names, yvar, outfile){
   render(input = zzfil,
          output_file = outfile,
          output_dir = rainbowbridge_dir)
+}
+
+output_sunburst <- function(zotu_data, sample_names, yvar, outfile){
+  ## Make the sunburst plot
+  
+  #yvar can be either "n_zotu" or "total_reads"
+  sun_data <- zotu_data %>%
+    group_by(across(domain:species)) %>%
+    select(-unique_hits) %>%
+    summarise(n_zotu = n_distinct(zotu),
+              across(where(is.numeric), sum),
+              .groups = 'drop') %>%
+    rowwise %>%
+    mutate(total_reads = sum(c_across(any_of(sample_names))),
+           .keep = 'unused') %>%
+    ungroup %>%
+    mutate(across(where(is.character), 
+                  ~if_else(. == 'LCA_dropped', NA_character_, .)),
+           
+           across(where(is.character),
+                  ~str_replace_na(., replacement = '')),
+           
+           path = str_c(domain, kingdom, phylum, class, order, family, genus, species, sep = '-') %>%
+             str_remove('-+$')) %>%
+    select(path, !!sym(yvar))
+  
+  library(htmlwidgets); library(sunburstR)
+  sun <- sunburst(sun_data, legend = FALSE)
+  
+  # Export the widget as SVG using the `saveWidget` function and PhantomJS
+  saveWidget(sun, file = str_c(rainbowbridge_dir, '/', outfile, '.html'), selfcontained = TRUE)
+  
+  # Convert HTML to SVG
+  # rsvg::rsvg_svg(str_c(rainbowbridge_dir, '/', outfile, '.html'), 
+  #                str_c(rainbowbridge_dir, '/', outfile, '.svg'))
+  # file.remove(str_c(rainbowbridge_dir, '/', outfile, '.html'))
 }
 
 ggnested_jds <- function (data, 
@@ -320,8 +356,8 @@ ggsave('reads_per_sample.png',
        width = 7)
 
 #### Summarize Taxonomic Results ####
-output_sunburst(zotus_final, samples$sample_id, 'n_zotu', 'taxonomy_nZOTU.html')
-output_sunburst(zotus_final, samples$sample_id, 'total_reads', 'taxonomy_nReads.html')
+output_sunburst(zotus_final, samples$sample_id, 'n_zotu', 'taxonomy_nZOTU')
+output_sunburst(zotus_final, samples$sample_id, 'total_reads', 'taxonomy_nReads')
   
 #### Summarize Sample Results ####
 sample_composition <- zotus_final %>%

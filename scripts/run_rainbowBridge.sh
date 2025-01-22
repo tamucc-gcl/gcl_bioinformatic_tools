@@ -86,6 +86,12 @@ mkdir -p ../output/fastqc/filtered
 cp -Lr output/fastqc/initial/*html ../output/fastqc/initial/
 cp -Lr output/fastqc/filtered/*html ../output/fastqc/filtered/
 
+# mkdir -p ../output/rainbowBridge_complete_output
+# cp -Lr output/* ../output/rainbowBridge_complete_output
+# cd ../output
+# tar cvJf rainbow_bridge/rainbowBridge_complete_output.tar.xz rainbowBridge_complete_output
+
+
 # Record the end time
 end_time=$(date +%s)
 echo ""
