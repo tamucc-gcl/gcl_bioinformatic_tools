@@ -29,7 +29,7 @@ Data files:
 Parameter files:
 
 * [metabarcode_rainbowbridge_paired.yml](metabarcode_rainbowbridge_paired.yml)
-* [paired_demuxed_barcode.tsv](paired_demuxed_barcode.tsv)
+* [paired_demuxed_barcode.tsv](paired_demuxed_barcode.tsv) - ADJUST
 * [sample.map](sample.map)
 * [metadata.csv](metadata.csv)
 

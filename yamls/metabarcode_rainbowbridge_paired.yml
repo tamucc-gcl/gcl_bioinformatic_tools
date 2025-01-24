@@ -4,9 +4,9 @@ metadata: PATH_TO_METADATA #At least two columns with sample IDs in both - name 
 barcode: PATH_TO_BARCODE
 sample-map: PATH_TO_SAMPLEIDS
 reads: PATH_TO_FASTQ
-blast-db: /scratch/group/p.bio240270.000/databases/midori2_latest #Or change blast DB to use
+blast-db: /scratch/group/p.bio240270.000/databases/midori2_latest/midori2_latest #Or change blast DB to use
 
-demultiplexed-by: index
+demultiplexed-by: index #change to barcode if not demultiplexed
 publish-mode: symlink
 fastqc: true
 paired: true

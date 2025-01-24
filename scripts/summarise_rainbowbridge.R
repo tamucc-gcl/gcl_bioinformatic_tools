@@ -51,19 +51,25 @@ lca_taxonomy <- str_c('output/taxonomy/lca/qcov', rainbowbridge_yaml$`lca-qcov`,
 #### Functions ####
 get_sample_readcounts <- function(sample_df, sample_dir){
   read_counts <- countFastq(sample_dir, 
-             pattern = 'fastq.gz') %>%
+                            pattern = 'fastq(.gz)?') %>%
     as_tibble(rownames = 'read_id') %>%
     dplyr::rename(reads = records)
   
-  left_join(sample_df,
-            select(read_counts, 
-                   read_id, reads, nucleotides),
-            by = c('r1' = 'read_id')) %>%
-    left_join(select(read_counts, 
-                     read_id, reads, nucleotides),
-              by = c('r2' = 'read_id'),
-              suffix = c('.r1', '.r2'))
+  out <- left_join(sample_df,
+                   select(read_counts, 
+                          read_id, reads, nucleotides),
+                   by = c('r1' = 'read_id'))
+  
+  if(any(colnames(sample_df) == 'r2')){
+    out <-  out %>%
+      left_join(select(read_counts, 
+                       read_id, reads, nucleotides),
+                by = c('r2' = 'read_id'),
+                suffix = c('.r1', '.r2'))
+  }
+  out
 }
+
 
 output_sunburst_OLD <- function(zotu_data, sample_names, yvar, outfile){
   ## Make the sunburst plot
@@ -291,33 +297,54 @@ write_csv(summary_metrics, 'summary_metrics.csv')
 
 
 #### Get Sample Info ####
-samples <- read_delim(rainbowbridge_yaml$`sample-map`, 
-                      show_col_types = FALSE,
-                      col_names = c('sample_id', 'r1', 'r2')) %>%
-  mutate(sample_id = str_replace_all(sample_id, '-', '_')) %>%
-  get_sample_readcounts(rainbowbridge_yaml$reads) %>%
-  mutate(in_final = sample_id %in% colnames(zotus_final))
+if(rainbowbridge_yaml$`demultiplexed-by` == 'index'){
+  #If reads were already demultiplexed
+  samples <- read_delim(rainbowbridge_yaml$`sample-map`, 
+                        show_col_types = FALSE,
+                        col_names = c('sample_id', 'r1', 'r2')) %>%
+    mutate(sample_id = str_replace_all(sample_id, '-', '_')) %>%
+    get_sample_readcounts(rainbowbridge_yaml$reads) %>%
+    mutate(in_final = sample_id %in% colnames(zotus_final)) %>%
+    rename(reads = reads.r1)
+  
+} else {
+  
+  samples <- list.files(path = 'preprocess/split_samples', pattern = 'fastq') %>%
+    tibble(r1 = .) %>%
+    mutate(sample_id = str_remove(r1, '__split__') %>%
+             str_remove('.fastq')) %>%
+    full_join(read_delim(rainbowbridge_yaml$metadata, 
+                         show_col_types = FALSE),
+              by = c('sample_id' = 'sample')) %>%
+    select(-sample_name) %>%
+    get_sample_readcounts('preprocess/split_samples') %>%
+    mutate(in_final = sample_id %in% colnames(zotus_final),
+           reads = replace_na(reads, 0L))
+  
+}
+
+
 
 samples %>%
   select(sample_id, 
-         reads = reads.r1, 
+         reads, 
          in_final) %>%
   mutate(notes = if_else(in_final, NA_character_, 'Removed from Further Analyses'),
          .keep = 'unused') %>%
   write_csv('sample_sequencing_summary.csv', na = '')
 
 sample_filtering_plot <- samples %>%
-  ggplot(aes(x = !in_final, y = reads.r1)) +
+  ggplot(aes(x = !in_final, y = reads)) +
   geom_boxplot() +
   geom_label(data = . %>% 
                summarise(n = n_distinct(sample_id), 
                          IDs = str_c(sample_id, collapse = '; '),
                          .by = in_final),
-            aes(y = Inf, 
-                label = if_else(in_final,
-                                as.character(n),
-                                str_c(n, IDs, sep = '\n'))),
-            vjust = 1, size = 12) + 
+             aes(y = Inf, 
+                 label = if_else(in_final,
+                                 as.character(n),
+                                 str_c(n, IDs, sep = '\n'))),
+             vjust = 1, size = 12) + 
   scale_y_continuous(trans = scales::log10_trans(),
                      labels = scales::comma_format(),
                      limits = c(1, NA)) +
@@ -336,8 +363,8 @@ ggsave('sample_filtering.png',
        width = 7)
 
 reads_per_sample_plot <- samples %>%
-  mutate(sample_id = fct_reorder(sample_id, reads.r1)) %>%
-  ggplot(aes(y = sample_id, x = reads.r1)) +
+  mutate(sample_id = fct_reorder(sample_id, reads)) %>%
+  ggplot(aes(y = sample_id, x = reads)) +
   geom_col() + 
   scale_x_continuous(labels = scales::comma_format(),
                      trans = scales::log10_trans()) +
@@ -354,6 +381,7 @@ ggsave('reads_per_sample.png',
        plot = reads_per_sample_plot,
        height = 15,
        width = 7)
+
 
 #### Summarize Taxonomic Results ####
 output_sunburst(zotus_final, samples$sample_id, 'n_zotu', 'taxonomy_nZOTU')
@@ -397,8 +425,8 @@ sample_composition_plot <- sample_composition %>%
   geom_col(position = 'fill') +
   scale_x_continuous(labels = scales::percent_format()) +
   guides(fill = guide_legend(ncol = 1)) +
-  labs(x = NULL, 
-       y = 'Relative Number of Reads (%)') +
+  labs(y = NULL, 
+       x = 'Relative Number of Reads (%)') +
   theme_classic(base_size = 12) +
   theme(axis.title.x = element_markdown(),
         axis.title.y = element_markdown(),
