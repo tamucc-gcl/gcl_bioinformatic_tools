@@ -48,7 +48,7 @@ lca_taxonomy <- str_c('output/taxonomy/lca/qcov', rainbowbridge_yaml$`lca-qcov`,
       '/lca_taxonomy.tsv') %>%
   read_delim(show_col_types = FALSE)
 
-final_zotu_sequences <- readDNAStringSet('output/zotus/intermediate_files_zotus.fasta')[zotus_final$zotu]
+final_zotu_sequences <- readDNAStringSet(list.files(path = 'output/zotus', pattern = '_zotus.fasta$', full.names = TRUE))[zotus_final$zotu]
 
 #### Functions ####
 get_sample_readcounts <- function(sample_df, sample_dir){
