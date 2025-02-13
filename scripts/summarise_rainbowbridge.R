@@ -48,6 +48,8 @@ lca_taxonomy <- str_c('output/taxonomy/lca/qcov', rainbowbridge_yaml$`lca-qcov`,
       '/lca_taxonomy.tsv') %>%
   read_delim(show_col_types = FALSE)
 
+final_zotu_sequences <- readDNAStringSet('output/zotus/intermediate_files_zotus.fasta')[zotus_final$zotu]
+
 #### Functions ####
 get_sample_readcounts <- function(sample_df, sample_dir){
   read_counts <- countFastq(sample_dir, 
@@ -578,6 +580,30 @@ ggsave('blast_classification_plot.png',
        plot = blast_classification_plot,
        height = 15,
        width = 7)
+
+#### Output zOTUs FASTA ####
+zotu_sequence_names <- select(sample_composition, zotu, domain:species, lowest_level) %>%
+  distinct %>%
+  rowwise(domain:species, lowest_level) %>%
+  reframe(zotu = str_split(zotu, '; ') %>%
+            unlist) %>%
+  distinct %>%
+  arrange(parse_number(zotu)) %>%
+  mutate(across(domain:species,
+                ~str_c(str_sub(cur_column(), 1, 1), ., sep = '_'))) %>%
+  select(domain:species, zotu) %>%
+  pivot_longer(cols = c(domain:species),
+               names_to = 'taxon_level',
+               values_to = 'taxa_name',
+               values_drop_na = TRUE) %>%
+  summarise(taxonomy = str_c(taxa_name, collapse = '; '),
+            .by = zotu) %>%
+  mutate(seq_name = str_c(zotu, taxonomy, sep = ': ')) %>%
+  select(-taxonomy) %>%
+  arrange(match(zotu, names(final_zotu_sequences)))
+
+names(final_zotu_sequences) <- zotu_sequence_names$seq_name
+Biostrings::writeXStringSet(final_zotu_sequences, 'zotu_sequences.fasta')
 
 
 #### Create Taxonomy Table (Summarize over zOTUs) ####

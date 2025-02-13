@@ -89,6 +89,7 @@ if [ "${final}" == "final" ]; then
   mv *png ../output/rainbow_bridge/
   mv *.csv ../output/rainbow_bridge/
   mv *metadata.txt ../output/rainbow_bridge/
+  mv *fasta ../output/rainbow_bridge/
   cp -Lr output/phyloseq/phyloseq.rds ../output/rainbow_bridge/
 
 

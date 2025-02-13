@@ -108,11 +108,11 @@ NOT DONE YET - TO EDIT
 | Taxonomic Composition of each sample (x-axis, percentage of classified reads) in each sample (y-axis, sorted by the number of reads) showing the lowest taxonomic classification of each zOTU based on the LCA algorithm using these [parameters](metabarcode_rainbowbridge_paired.yml). In the legend the letter preceeding the taxon name indicates the taxonomic level (i.e. "g_" indicates genus level identification). |
 
 ### Download Metabarcoding Results for Further Analysis
-| | zOTU Table | Phyloseq RDS | Lowest Taxa Table |
-|:--|:--:|:--:|:--:|
-| File | [zOTU x Sample Table](output/rainbow_bridge/zotu_table.csv) | [Phyloseq Object](output/rainbow_bridge/phyloseq.rds) | [Lowest Taxonomic Classification x Sample Table](output/rainbow_bridge/lowest_taxonomy_table.csv) |
-| File Type | Tab Seperated Value (tsv) | R Data Structure (rds) | Comma Seperated Value (csv) |
-| Description | Each row contains a unique zOTU with the number of reads in each sample (also contains zOTU taxonomy information) | Data File containing taxonomy and zOTU x Sample counts used by many R packages | Each row contains the lowest taxonomic classification with the number of reads in each sample |
-| Metadata | [Column Descriptions](output/rainbow_bridge/zotu_table_metadata.txt) | [file format guide](https://www.bioconductor.org/packages/release/bioc/vignettes/phyloseq/inst/doc/phyloseq-basics.html) | [Column Descriptions](output/rainbow_bridge/lowest_taxonomy_table_metadata.txt) |
+| | zOTU Table | zOTU Sequences | Phyloseq RDS | Lowest Taxa Table |
+|:--|:--:|:--:|:--:|:--:|
+| File | [zOTU x Sample Table](output/rainbow_bridge/zotu_table.csv) | [zOTU sequences](output/rainbow_bridge/zotu_sequences.fasta) | [Phyloseq Object](output/rainbow_bridge/phyloseq.rds) | [Lowest Taxonomic Classification x Sample Table](output/rainbow_bridge/lowest_taxonomy_table.csv) |
+| File Type | Comma Seperated Value (csv) | FASTA file | R Data Structure (rds) | Comma Seperated Value (csv) |
+| Description | Each row contains a unique zOTU with the number of reads in each sample (also contains zOTU taxonomy information) | Sequence and Taxonomic Information for each zOTU | Data File containing taxonomy and zOTU x Sample counts used by many R packages | Each row contains the lowest taxonomic classification with the number of reads in each sample |
+| Metadata | [Column Descriptions](output/rainbow_bridge/zotu_table_metadata.txt) |  | [file format guide](https://www.bioconductor.org/packages/release/bioc/vignettes/phyloseq/inst/doc/phyloseq-basics.html) | [Column Descriptions](output/rainbow_bridge/lowest_taxonomy_table_metadata.txt) |
 
 Download all intermediate analysis files [here]()- ADJUST
