@@ -6,9 +6,8 @@ if(!interactive()){
   param_yaml <- args[2]
   .libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 } else {
-  # rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/test_run'
-  rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/full_run_v1/'
-  param_yaml <- 'paired_demuxed.yml'
+  rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/testing_highPIDENT_DIFF_lowerPIDENT/'
+  param_yaml <- 'metabarcode_rainbowbridge_paired.yml'
 }
 
 setwd(rainbowbridge_dir)
@@ -43,10 +42,11 @@ blast_hits <- str_c('output/blast/pid', rainbowbridge_yaml$`percent-identity`,
              show_col_types = FALSE)
 
 lca_taxonomy <- str_c('output/taxonomy/lca/qcov', rainbowbridge_yaml$`lca-qcov`, 
-      '_pid', rainbowbridge_yaml$`lca-pid`, 
-      '_diff', rainbowbridge_yaml$`lca-diff`, 
-      '/lca_taxonomy.tsv') %>%
+                      '_pid', rainbowbridge_yaml$`lca-pid`, 
+                      '_diff', rainbowbridge_yaml$`lca-diff`, 
+                      '/lca_taxonomy.tsv') %>%
   read_delim(show_col_types = FALSE)
+
 
 final_zotu_sequences <- readDNAStringSet(list.files(path = 'output/zotus', pattern = '_zotus.fasta$', full.names = TRUE))[zotus_final$zotu]
 
@@ -278,22 +278,22 @@ lulu_table <- read_delim('output/lulu/lulu_zotu_table.tsv',
                          show_col_types = FALSE)
 
 summary_metrics <- tibble(maxhits = rainbowbridge_yaml$`max-query-results`,
-       qcov = rainbowbridge_yaml$qcov,
-       pid = rainbowbridge_yaml$`percent-identity`,
-       eval = rainbowbridge_yaml$evalue,
-       lca_qcov = rainbowbridge_yaml$`lca-qcov`,
-       lca_pid = rainbowbridge_yaml$`lca-pid`,
-       lca_diff = rainbowbridge_yaml$`lca-diff`,
-       n_zotu_raw = n_distinct(raw_zotu_table$`#OTU ID`),
-       n_hits_blast = nrow(blast_hits),
-       nhits_per_rawzotu = n_hits_blast / n_zotu_raw,
-       n_taxa_blast = n_distinct(blast_hits$blast_species),
-       n_zotu_lulu = n_distinct(lulu_table$zotu),
-       n_zotu_lca = n_distinct(lca_taxonomy$zotu),
-       n_zotu_final = n_distinct(zotus_final$zotu),
-       n_taxa_final = select(zotus_final, domain:species) %>%
-         distinct %>%
-         nrow)
+                          qcov = rainbowbridge_yaml$qcov,
+                          pid = rainbowbridge_yaml$`percent-identity`,
+                          eval = rainbowbridge_yaml$evalue,
+                          lca_qcov = rainbowbridge_yaml$`lca-qcov`,
+                          lca_pid = rainbowbridge_yaml$`lca-pid`,
+                          lca_diff = rainbowbridge_yaml$`lca-diff`,
+                          n_zotu_raw = n_distinct(raw_zotu_table$`#OTU ID`),
+                          n_hits_blast = nrow(blast_hits),
+                          nhits_per_rawzotu = n_hits_blast / n_zotu_raw,
+                          n_taxa_blast = n_distinct(blast_hits$blast_species),
+                          n_zotu_lulu = n_distinct(lulu_table$zotu),
+                          n_zotu_lca = n_distinct(lca_taxonomy$zotu),
+                          n_zotu_final = n_distinct(zotus_final$zotu),
+                          n_taxa_final = select(zotus_final, domain:species) %>%
+                            distinct %>%
+                            nrow)
 
 write_csv(summary_metrics, 'summary_metrics.csv')
 
@@ -336,7 +336,7 @@ samples %>%
   write_csv('sample_sequencing_summary.csv', na = '')
 
 sample_filtering_plot <- samples %>%
-  ggplot(aes(x = in_final, y = reads.r1)) +
+  ggplot(aes(x = in_final, y = reads)) +
   geom_boxplot() +
   geom_label(data = . %>% 
                summarise(n = n_distinct(sample_id), 
@@ -369,10 +369,10 @@ ggsave('sample_filtering.png',
        width = 7)
 
 reads_per_sample_plot <- samples %>%
-  mutate(sample_id = fct_reorder(sample_id, reads.r1)) %>%
-  ggplot(aes(y = sample_id, x = reads.r1)) +
+  mutate(sample_id = fct_reorder(sample_id, reads)) %>%
+  ggplot(aes(y = sample_id, x = reads)) +
   geom_col() + 
-  geom_vline(xintercept = median(samples$reads.r1), colour = 'red') +
+  geom_vline(xintercept = median(samples$reads), colour = 'red') +
   scale_x_continuous(labels = scales::comma_format(),
                      trans = scales::log10_trans()) +
   annotation_logticks(sides = 'b') +
@@ -394,7 +394,7 @@ ggsave('reads_per_sample.png',
 #### Summarize Taxonomic Results ####
 output_sunburst(zotus_final, samples$sample_id, 'n_zotu', 'taxonomy_nZOTU')
 output_sunburst(zotus_final, samples$sample_id, 'total_reads', 'taxonomy_nReads')
-  
+
 #### Visualize Classification Quality ####
 summarized_blast <- select(blast_hits, 
                            zotu, pident, qcov) %>%
@@ -604,7 +604,6 @@ zotu_sequence_names <- select(sample_composition, zotu, domain:species, lowest_l
 
 names(final_zotu_sequences) <- zotu_sequence_names$seq_name
 Biostrings::writeXStringSet(final_zotu_sequences, 'zotu_sequences.fasta')
-
 
 #### Create Taxonomy Table (Summarize over zOTUs) ####
 zotus_updated <- left_join(zotus_final,
