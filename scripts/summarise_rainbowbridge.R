@@ -334,7 +334,7 @@ samples %>%
   write_csv('sample_sequencing_summary.csv', na = '')
 
 sample_filtering_plot <- samples %>%
-  ggplot(aes(x = !in_final, y = reads)) +
+  ggplot(aes(x = in_final, y = reads.r1)) +
   geom_boxplot() +
   geom_label(data = . %>% 
                summarise(n = n_distinct(sample_id), 
@@ -348,7 +348,11 @@ sample_filtering_plot <- samples %>%
   scale_y_continuous(trans = scales::log10_trans(),
                      labels = scales::comma_format(),
                      limits = c(1, NA)) +
-  labs(x = 'Samples Removed Due to lack of Reads',
+  scale_x_discrete(breaks = c('TRUE', 'FALSE'),
+                   labels = c('Samples Retained\nin Analysis', 
+                              'Samples Removed\nDue to Lack of Reads'),
+                   limits = c('TRUE', 'FALSE')) +
+  labs(x = NULL,
        y = 'log<sub>10</sub>(# Reads)') +
   theme_classic(base_size = 12) +
   theme(axis.title.x = element_markdown(),
@@ -387,6 +391,86 @@ ggsave('reads_per_sample.png',
 output_sunburst(zotus_final, samples$sample_id, 'n_zotu', 'taxonomy_nZOTU')
 output_sunburst(zotus_final, samples$sample_id, 'total_reads', 'taxonomy_nReads')
   
+#### Visualize Classification Quality ####
+summarized_blast <- select(blast_hits, 
+                           zotu, pident, qcov) %>%
+  summarise(across(c(pident, qcov), list(mean = mean, median = median, 
+                                         min = min, max = max)),
+            .by = 'zotu')
+
+summarized_blast_plot <- select(zotus_final, 
+                                zotu, taxid_rank) %>%
+  left_join(summarized_blast,
+            by = 'zotu') %>%
+  pivot_longer(cols = -c(zotu, taxid_rank),
+               names_to = c('metric', 'measure'),
+               names_pattern = '(.*)_(.*)') %>%
+  mutate(across(c(measure, taxid_rank), str_to_sentence),
+         taxid_rank = factor(taxid_rank, 
+                             levels = c('Domain', 'Kingdom', 'Phylum',
+                                        'Class', 'Order', 'Family',
+                                        'Genus', 'Species'))) %>%
+  ggplot(aes(x = taxid_rank, y = value)) +
+  stat_summary(fun.data = mean_sdl) +
+  facet_grid(measure ~ metric) +
+  labs(x = NULL, 
+       y = 'Value') +
+  theme_classic(base_size = 12) +
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank(),
+        strip.background = element_blank())
+
+
+summarized_blast_plot <- select(zotus_final, 
+                                zotu, taxid_rank) %>%
+  left_join(select(blast_hits, 
+                   zotu, pident, qcov),
+            by = 'zotu') %>%
+  
+  pivot_longer(cols = c(pident, qcov),
+               names_to = 'metric', 
+               values_to = 'value') %>%
+  summarise(mean_value = mean(value),
+            sd_value = sd(value),
+            .by = c(taxid_rank, metric)) %>%
+  
+  mutate(taxid_rank = factor(str_to_title(taxid_rank), 
+                             levels = c('Domain', 'Kingdom', 'Phylum',
+                                        'Class', 'Order', 'Family',
+                                        'Genus', 'Species'))) %>%
+  ggplot(aes(y = mean_value, x = taxid_rank)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean_value - sd_value,
+                    ymax = mean_value + sd_value)) +
+  facet_grid( ~ metric,
+              scales = 'free_y',
+              space = 'free_y',
+              switch = "both") +
+  labs(x = NULL, 
+       y = NULL) +
+  theme_classic(base_size = 12) +
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 16),
+        strip.placement = "outside",
+        strip.clip = "off")
+
+
+ggsave('summarized_blast_taxa.png', 
+       plot = summarized_blast_plot,
+       height = 7,
+       width = 10)
+
+
 #### Summarize Sample Results ####
 sample_composition <- zotus_final %>%
   select(-unique_hits) %>%
@@ -439,6 +523,98 @@ ggsave('sample_composition.png',
        plot = sample_composition_plot,
        height = 15,
        width = 7)
+
+
+blast_classification_plot <- sample_composition %>%
+  select(zotu, lowest_level) %>%
+  distinct %>%
+  rowwise(lowest_level) %>%
+  reframe(zotu = str_split(zotu, ';') %>% unlist %>% str_trim) %>%
+  
+  left_join(select(blast_hits, 
+                   zotu, pident, qcov),
+            by = 'zotu') %>%
+  left_join(select(zotus_final, zotu, taxid_rank),
+            by = 'zotu') %>%
+  pivot_longer(cols = c(pident, qcov),
+               names_to = 'metric', 
+               values_to = 'value') %>%
+  summarise(mean_value = mean(value),
+            sd_value = sd(value),
+            .by = c(taxid_rank, lowest_level, metric)) %>%
+  
+  mutate(lowest_level = fct_reorder(lowest_level, mean_value),
+         taxid_rank = factor(str_to_title(taxid_rank), 
+                             levels = c('Domain', 'Kingdom', 'Phylum',
+                                        'Class', 'Order', 'Family',
+                                        'Genus', 'Species'))) %>%
+  ggplot(aes(x = mean_value, y = lowest_level)) +
+  geom_col() +
+  geom_errorbar(aes(xmin = mean_value - sd_value,
+                    xmax = mean_value + sd_value)) +
+  facet_grid(taxid_rank ~ metric,
+             scales = 'free_y',
+             space = 'free_y',
+             switch = "both") +
+  labs(x = NULL, 
+       y = NULL) +
+  theme_classic(base_size = 12) +
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 16),
+        strip.placement = "outside",
+        strip.clip = "off")
+
+ggsave('blast_classification_plot.png', 
+       plot = blast_classification_plot,
+       height = 15,
+       width = 7)
+
+
+#### Create Taxonomy Table (Summarize over zOTUs) ####
+zotus_updated <- left_join(zotus_final,
+                           summarized_blast,
+                           by = c('zotu')) %>%
+  relocate(all_of(colnames(summarized_blast)[-1]),
+           .after = unique_hits)
+write_csv(zotus_updated, 'zotu_table.csv')
+
+taxa_table <- summarise(zotus_final,
+                        across(c(where(is.numeric), -unique_hits), 
+                               sum),
+                        n_zotu = n_distinct(zotu),
+                        .by = c(domain:species)) %>%
+  relocate(n_zotu, .after = taxid)
+write_csv(taxa_table, 'lowest_taxonomy_table.csv')
+
+#### Output Files with metadata for zOTU and lowest taxonomy tables ####
+sample_columns <- colnames(zotus_final)[colnames(zotus_final) %in% samples$sample_id]
+
+c('zotu: A unique identifier for each Zero-radius Operational Taxonomic Unit (ZOTU), representing a unique sequence variant.',
+  'taxid: A numeric taxonomic identifier (from NCBI) that corresponds to the organism’s entry in a taxonomy database.',
+  'unique_hits: Number of unique BLAST sequence hits.',
+  'pident (mean, median, min, max) & qcov (mean, median, min, max): mean/median/min/max values of the BLAST hits passing filtering used to taxonomically classify the zOTU',
+  'domain, kingdom, phylum, class, order, family, genus, species: Taxonomic classification of the zOTU.',
+  'taxid_rank: The lowest level of taxonomic classification.',
+  str_c(str_c(sample_columns[1:3], collapse = ', '), 
+        ', ..., ', 
+        str_c(sample_columns[(length(sample_columns) - 2):length(sample_columns)], collapse = ', '), 
+        ': Number of reads of each zOTU in the specified sample')) %>%
+  write_lines('zotu_table_metadata.txt')
+
+c('domain, kingdom, phylum, class, order, family, genus, species: Taxonomic classification of the zOTU.',
+  'taxid_rank: The lowest level of taxonomic classification.',
+  'n_zotu: Number of zOTUs classified to the specified lowest level of taxonomic classification',
+  str_c(str_c(sample_columns[1:3], collapse = ', '), 
+        ', ..., ', 
+        str_c(sample_columns[(length(sample_columns) - 2):length(sample_columns)], collapse = ', '), 
+        ': Number of reads of each lowest taxonomic level in the specified sample')) %>%
+  write_lines('lowest_taxonomy_table_metadata.txt')
 
 #### Summarize BLAST -> Taxonomy ####
 # tmp <- lca_taxonomy %>%

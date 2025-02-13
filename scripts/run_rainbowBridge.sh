@@ -79,8 +79,8 @@ mkdir -p ../output/rainbow_bridge
 mv *html ../output/rainbow_bridge/
 mv *png ../output/rainbow_bridge/
 mv *.csv ../output/rainbow_bridge/
+mv *metadata.txt ../output/rainbow_bridge/
 cp -Lr output/phyloseq/phyloseq.rds ../output/rainbow_bridge/
-cp -Lr output/final/zotu_table_final_curated.tsv ../output/rainbow_bridge/
 
 
 #If multiqc was not run because only one fastq file run multiqc for the sake of consistent output
@@ -101,10 +101,15 @@ mkdir -p ../output/fastqc/filtered
 cp -Lr output/fastqc/initial/*html ../output/fastqc/initial/
 cp -Lr output/fastqc/filtered/*html ../output/fastqc/filtered/
 
-# mkdir -p ../output/rainbowBridge_complete_output
-# cp -Lr output/* ../output/rainbowBridge_complete_output
-# cd ../output
-# tar cvJf rainbow_bridge/rainbowBridge_complete_output.tar.xz rainbowBridge_complete_output
+## Tarball the full rainbow bridge analysis
+mkdir -p ../output/rainbowBridge_complete_output
+cp -Lr output/* ../output/rainbowBridge_complete_output
+cd ../output
+tar cvJf rainbow_bridge/rainbowBridge_complete_output.tar.xz rainbowBridge_complete_output
+rm -rf rainbowBridge_complete_output
+
+#Copy to file sharing server
+
 
 # Record the end time
 end_time=$(date +%s)
