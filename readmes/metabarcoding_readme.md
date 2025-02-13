@@ -79,7 +79,7 @@ NOT DONE YET - TO EDIT
 
 | ![Reads per Sample](output/rainbow_bridge/reads_per_sample.png "Reads per Sample") |
 |:--:| 
-| Number of Reads sequenced (x-axis - log<sub>10</sub> transformed) in each sample (y-axis). Download Table with number of reads in each sample [here](output/rainbow_bridge/sample_sequencing_summary.csv). |
+| Number of Reads sequenced (x-axis - log<sub>10</sub> transformed) in each sample (y-axis). The red vertical line indicates the median number of reads. Download Table with number of reads in each sample [here](output/rainbow_bridge/sample_sequencing_summary.csv). |
 
 | ![Sample Filtering](output/rainbow_bridge/sample_filtering.png "Sample Filtering") |
 |:--:| 

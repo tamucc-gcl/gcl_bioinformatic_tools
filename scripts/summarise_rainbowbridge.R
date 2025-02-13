@@ -367,11 +367,13 @@ ggsave('sample_filtering.png',
        width = 7)
 
 reads_per_sample_plot <- samples %>%
-  mutate(sample_id = fct_reorder(sample_id, reads)) %>%
-  ggplot(aes(y = sample_id, x = reads)) +
+  mutate(sample_id = fct_reorder(sample_id, reads.r1)) %>%
+  ggplot(aes(y = sample_id, x = reads.r1)) +
   geom_col() + 
+  geom_vline(xintercept = median(samples$reads.r1), colour = 'red') +
   scale_x_continuous(labels = scales::comma_format(),
                      trans = scales::log10_trans()) +
+  annotation_logticks(sides = 'b') +
   labs(y = NULL,
        x = 'log<sub>10</sub>(# Reads)') +
   theme_classic(base_size = 12) +
@@ -445,7 +447,8 @@ summarized_blast_plot <- select(zotus_final,
   ggplot(aes(y = mean_value, x = taxid_rank)) +
   geom_col() +
   geom_errorbar(aes(ymin = mean_value - sd_value,
-                    ymax = mean_value + sd_value)) +
+                    ymax = mean_value + sd_value),
+                width = 0.5) +
   facet_grid( ~ metric,
               scales = 'free_y',
               space = 'free_y',
@@ -551,7 +554,8 @@ blast_classification_plot <- sample_composition %>%
   ggplot(aes(x = mean_value, y = lowest_level)) +
   geom_col() +
   geom_errorbar(aes(xmin = mean_value - sd_value,
-                    xmax = mean_value + sd_value)) +
+                    xmax = mean_value + sd_value),
+                width = 0.5) +
   facet_grid(taxid_rank ~ metric,
              scales = 'free_y',
              space = 'free_y',

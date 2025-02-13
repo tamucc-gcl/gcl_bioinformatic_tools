@@ -21,10 +21,12 @@
 
 #----------------------------
 # Execute:
-# sbatch run_rainbow_brigde.sh <params YAML file> <output_dir>
+# sbatch run_rainbow_brigde.sh <params YAML file> <output_dir> final
 #
 # example:
 # sbatch run_rainbow_brigde.sh paired_unmuxed.yml output
+# OR to run finalization copying use:
+# sbatch run_rainbow_brigde.sh paired_unmuxed.yml output final
 #----------------------------
 
 # note: I am using NCBI's nucleotide database blastn v2_16_0. You might want to check if a newer version exist in https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
@@ -51,6 +53,8 @@ echo ${script_dir} #TEST
 # Initial reporting. Print parameters used
 PARAMSFILE=$1
 outdir=${2}
+final=${3}
+
 
 # Write the script name to the output file
 echo "The script executed is: $script_path"
@@ -73,42 +77,50 @@ module load Anaconda3; source activate r_env
 Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd) ${PARAMSFILE}
 conda deactivate
 
-#Move outputs from intermediate to outputs
-mkdir -p ../output/rainbow_bridge
 
-mv *html ../output/rainbow_bridge/
-mv *png ../output/rainbow_bridge/
-mv *.csv ../output/rainbow_bridge/
-mv *metadata.txt ../output/rainbow_bridge/
-cp -Lr output/phyloseq/phyloseq.rds ../output/rainbow_bridge/
+## Copy files and finalize outputs to return to customer ##
+if [ "${final}" == "final" ]; then
+  echo "Finalizing Outputs"
+
+  #Move outputs from intermediate to outputs
+  mkdir -p ../output/rainbow_bridge
+
+  mv *html ../output/rainbow_bridge/
+  mv *png ../output/rainbow_bridge/
+  mv *.csv ../output/rainbow_bridge/
+  mv *metadata.txt ../output/rainbow_bridge/
+  cp -Lr output/phyloseq/phyloseq.rds ../output/rainbow_bridge/
 
 
-#If multiqc was not run because only one fastq file run multiqc for the sake of consistent output
-if ! test -f output/fastqc/initial/multiqc_report.html; then
-  module load Anaconda3; source activate multiqc
-  multiqc output/fastqc/initial/ -o output/fastqc/initial/
-  conda deactivate
+  #If multiqc was not run because only one fastq file run multiqc for the sake of consistent output
+  if ! test -f output/fastqc/initial/multiqc_report.html; then
+    module load Anaconda3; source activate multiqc
+    multiqc output/fastqc/initial/ -o output/fastqc/initial/
+    conda deactivate
+  fi
+
+  if ! test -f output/fastqc/filtered/multiqc_report.html; then
+    module load Anaconda3; source activate multiqc
+    multiqc output/fastqc/filtered/ -o output/fastqc/filtered/
+    conda deactivate
+  fi
+
+  mkdir -p ../output/fastqc/initial
+  mkdir -p ../output/fastqc/filtered
+  cp -Lr output/fastqc/initial/*html ../output/fastqc/initial/
+  cp -Lr output/fastqc/filtered/*html ../output/fastqc/filtered/
+
+  ## Tarball the full rainbow bridge analysis
+  mkdir -p ../output/rainbowBridge_complete_output
+  cp -Lr output/* ../output/rainbowBridge_complete_output
+  cd ../output
+  tar cvJf rainbow_bridge/rainbowBridge_complete_output.tar.xz rainbowBridge_complete_output
+  rm -rf rainbowBridge_complete_output
+
+  #Copy to file sharing server
+
+
 fi
-
-if ! test -f output/fastqc/filtered/multiqc_report.html; then
-  module load Anaconda3; source activate multiqc
-  multiqc output/fastqc/filtered/ -o output/fastqc/filtered/
-  conda deactivate
-fi
-
-mkdir -p ../output/fastqc/initial
-mkdir -p ../output/fastqc/filtered
-cp -Lr output/fastqc/initial/*html ../output/fastqc/initial/
-cp -Lr output/fastqc/filtered/*html ../output/fastqc/filtered/
-
-## Tarball the full rainbow bridge analysis
-mkdir -p ../output/rainbowBridge_complete_output
-cp -Lr output/* ../output/rainbowBridge_complete_output
-cd ../output
-tar cvJf rainbow_bridge/rainbowBridge_complete_output.tar.xz rainbowBridge_complete_output
-rm -rf rainbowBridge_complete_output
-
-#Copy to file sharing server
 
 
 # Record the end time
