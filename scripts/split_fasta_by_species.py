@@ -2,11 +2,15 @@
 
 import os
 import argparse
+from collections import defaultdict
 from Bio import SeqIO
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Split a FASTA file by species/taxid on-the-fly."
+        description=(
+            "Split a FASTA file by species/taxid. "
+            "All sequences for a given species/taxid will go into one file."
+        )
     )
     parser.add_argument("input_fasta", help="Path to the input FASTA file.")
     parser.add_argument(
@@ -15,38 +19,40 @@ def main():
     )
     args = parser.parse_args()
 
-    # Create the output directory if it doesn't already exist
+    # 1) Read the FASTA and group records by species/taxid
+    species_records = defaultdict(list)
+
+    print("Reading and grouping sequences by species/taxID...")
+    with open(args.input_fasta, "r") as fh:
+        for record in SeqIO.parse(fh, "fasta"):
+            # Example record.id: "MG559732.1.Clydonella_sawyeri_2201168"
+            parts = record.id.split(".", 2)
+            if len(parts) == 3:
+                species_taxid = parts[2]  # e.g. "Clydonella_sawyeri_2201168"
+            else:
+                species_taxid = record.id  # fallback if format is unexpected
+
+            species_records[species_taxid].append(record)
+
+    # Create output directory if needed
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Dictionary to hold open file handles keyed by species/taxid
-    file_handles = {}
+    # 2) Write each group to its own FASTA file (one at a time)
+    print("Writing grouped records to separate files...")
+    for species_taxid, records in species_records.items():
+        output_fasta_path = os.path.join(
+            args.output_dir,
+            f"{species_taxid}.fasta"
+        )
 
-    # Parse the input FASTA and write each record immediately
-    for record in SeqIO.parse(args.input_fasta, "fasta"):
-        # Example record.id = "MG559732.1.Clydonella_sawyeri_2201168"
-        # Split on '.' only twice to handle sequences like "MG559732.1.some_name"
-        parts = record.id.split('.', 2)
-        if len(parts) == 3:
-            # The third part after splitting on '.' is "Clydonella_sawyeri_2201168"
-            species_taxid = parts[2]
-        else:
-            # Fallback if the format is unexpected
-            species_taxid = record.id
+        # Write all sequences for this species/taxid
+        with open(output_fasta_path, "w") as out_fh:
+            SeqIO.write(records, out_fh, "fasta")
 
-        # Construct output FASTA path
-        output_fasta_path = os.path.join(args.output_dir, f"{species_taxid}.fasta")
+        # Optional: print progress
+        # print(f"Wrote {len(records)} sequences to {output_fasta_path}")
 
-        # Open a new file handle if this species hasn't been encountered yet
-        if species_taxid not in file_handles:
-            file_handles[species_taxid] = open(output_fasta_path, "w")
-
-        # Write the record to the appropriate file in FASTA format
-        # You can either manually format or use SeqIO.write with a single-element list:
-        SeqIO.write([record], file_handles[species_taxid], "fasta")
-
-    # Close all file handles
-    for fh in file_handles.values():
-        fh.close()
+    print("Done. All files have been written.")
 
 if __name__ == "__main__":
     main()
