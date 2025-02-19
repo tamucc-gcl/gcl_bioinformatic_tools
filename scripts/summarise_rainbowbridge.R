@@ -295,6 +295,12 @@ summary_metrics <- tibble(maxhits = rainbowbridge_yaml$`max-query-results`,
                             distinct %>%
                             nrow)
 
+summary_metrics <- count(zotus_final, taxid_rank) %>%
+  pivot_wider(names_from = 'taxid_rank',
+              values_from = 'n',
+              names_prefix = 'n_') %>%
+  bind_cols(summary_metrics, .)
+
 write_csv(summary_metrics, 'summary_metrics.csv')
 
 
@@ -526,6 +532,32 @@ sample_composition_plot <- sample_composition %>%
 
 ggsave('sample_composition.png', 
        plot = sample_composition_plot,
+       height = 15,
+       width = 7)
+
+sample_composition_plot2 <- sample_composition %>%
+  mutate(sample_id = fct_reorder(sample_id, n_reads)) %>%
+  ggnested_jds(aes(y = sample_id, x = n_reads, 
+                   main_group = class, sub_group = lowest_level),
+               legend_labeling = 'sub', legend_title = 'Lowest Taxonomic\nClassification',
+               main_keys = TRUE, nested_aes = c("fill"), 
+               gradient_type = 'both',
+               NA_option = 'black') +
+  geom_col(position = 'stack') +
+  scale_x_continuous(labels = scales::comma_format()) +
+  guides(fill = guide_legend(ncol = 1)) +
+  labs(y = NULL, 
+       x = 'Number of Reads') +
+  theme_classic(base_size = 12) +
+  theme(axis.title.x = element_markdown(),
+        axis.title.y = element_markdown(),
+        panel.background = element_rect(colour = 'black'),
+        legend.position = 'right',
+        legend.text = element_markdown(),
+        legend.key = element_blank())
+
+ggsave('sample_composition2.png', 
+       plot = sample_composition_plot2,
        height = 15,
        width = 7)
 

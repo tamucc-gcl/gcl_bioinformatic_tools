@@ -103,9 +103,9 @@ NOT DONE YET - TO EDIT
 |:--:|:--:|:--:|
 | Download to View | [Read Composition](output/rainbow_bridge/taxonomy_nReads.html) | [zOTU Composition](output/rainbow_bridge/taxonomy_nZOTU.html) |
 
-| ![Sample Composition](output/rainbow_bridge/sample_composition.png "Sample Composition") |
-|:--:| 
-| Taxonomic Composition of each sample (x-axis, percentage of classified reads) in each sample (y-axis, sorted by the number of reads) showing the lowest taxonomic classification of each zOTU based on the LCA algorithm using these [parameters](metabarcode_rainbowbridge_paired.yml). In the legend the letter preceeding the taxon name indicates the taxonomic level (i.e. "g_" indicates genus level identification). |
+| ![Sample Composition Percent](output/rainbow_bridge/sample_composition.png "Sample Composition Percent") | ![Sample Composition Reads](output/rainbow_bridge/sample_composition2.png "Sample Composition Reads") |
+|:--:| :--:| 
+| Taxonomic Composition of each sample (x-axis, percentage of classified reads) in each sample (y-axis, sorted by the number of reads) showing the lowest taxonomic classification of each zOTU based on the LCA algorithm using these [parameters](metabarcode_rainbowbridge_paired.yml). In the legend the letter preceeding the taxon name indicates the taxonomic level (i.e. "g_" indicates genus level identification). | Taxonomic Composition of each sample (x-axis, number classified reads) in each sample (y-axis, sorted by the number of reads) showing the lowest taxonomic classification of each zOTU based on the LCA algorithm using these [parameters](metabarcode_rainbowbridge_paired.yml). In the legend the letter preceeding the taxon name indicates the taxonomic level (i.e. "g_" indicates genus level identification). |
 
 ### Download Metabarcoding Results for Further Analysis
 | | zOTU Table | zOTU Sequences | Phyloseq RDS | Lowest Taxa Table |
