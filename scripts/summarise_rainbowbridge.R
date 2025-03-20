@@ -642,7 +642,10 @@ zotus_updated <- left_join(zotus_final,
                            summarized_blast,
                            by = c('zotu')) %>%
   relocate(all_of(colnames(summarized_blast)[-1]),
-           .after = unique_hits)
+           .after = unique_hits) %>%
+  rowwise() %>%
+  mutate(across(domain:species, ~ if_else(. == "LCA_dropped" & any(c_across(cur_column():species) != "LCA_dropped"), NA_character_, .))) %>%
+  ungroup()
 write_csv(zotus_updated, 'zotu_table.csv')
 
 taxa_table <- summarise(zotus_final,

@@ -2,7 +2,7 @@
 ##TODO - Finalize output tables & graphs
 ##TODO - Run digestions in parallel
 ##TODO - implement more than just ddRAD
-
+##TODO - add in custom restriction enzymes - i.e. MspI = 'C/CGG'
 
 if(!interactive()){
   args <- commandArgs(trailingOnly = TRUE)
@@ -16,9 +16,9 @@ if(!interactive()){
 } else {
   outdir <- '~/Google Drive/TAMUCC-CORE/tmp_dir'
   digestion_protocol <- 'ddrad'
-  genome_file <- '~/Google Drive/TAMUCC-CORE/tmp_dir/methylation_rad/GCF_002234675.1_ASM223467v1_genomic.fna'
-  restriction_enzymes <- c("EcoRI", 'HindIII', 'BstBI', 'SphI')
-  size_window <- c(400, 600)
+  genome_file <- '~/../Downloads/GCA_042920385.1_ASM4292038v1_genomic.fna'
+  restriction_enzymes <- c("EcoRI", 'HindIII', 'BstBI', 'SphI', 'MspI')
+  size_window <- c(350, 550)
 }
 
 #### Libraries ####
@@ -72,6 +72,7 @@ perform_digest <- function(genome, enzymes, digest_type){
 
 #### Prep inputs ####
 data(RESTRICTION_ENZYMES)
+RESTRICTION_ENZYMES <- c(RESTRICTION_ENZYMES, 'MspI' = 'C/CGG')
 
 the_genome <- readDNAStringSet(genome_file)
 
@@ -79,9 +80,13 @@ the_genome <- readDNAStringSet(genome_file)
 processed_digestion <- expand_grid(enzyme1 = restriction_enzymes,
             enzyme2 = restriction_enzymes) %>%
   filter(enzyme1 < enzyme2) %>%
+  
+  #Temp addition - need to rework to make possible to specify special enzyme
+  filter(enzyme1 == 'EcoRI', enzyme2 == 'MspI') %>%
   rowwise(enzyme1, enzyme2) %>%
   reframe(perform_digest(the_genome, 
-                         RESTRICTION_ENZYMES[c(enzyme1, enzyme2)], 
+                         RESTRICTION_ENZYMES[c(enzyme1, enzyme2)],
+                         # c(cut_site1, cut_site2),
                          digestion_protocol))
 
 #### Outputs ####
@@ -106,3 +111,7 @@ processed_digestion %>%
   ggplot(aes(x = mid_length, y = n_frag)) +
   geom_point() +
   facet_grid(enzyme1 ~ enzyme2)
+
+processed_digestion %>%
+  filter(frag_length >= min(size_window),
+         frag_length <= max(size_window))

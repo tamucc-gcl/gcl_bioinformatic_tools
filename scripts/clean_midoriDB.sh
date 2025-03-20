@@ -24,10 +24,19 @@
 #----------------------------
 
 
-MASH=/scratch/group/p.bio240270.000/software/mash/mash
+#MASH=/scratch/group/p.bio240270.000/software/mash/mash
 script_dir=/scratch/group/p.bio240270.000/gcl_bioinformatic_tools/scripts
 
 in_fasta=${1}
+min_sequences=${2}
+
+# Check if stdout is a terminal; if yes, add the --bar option.
+if [ -t 1 ]; then
+    PARALLEL_OPTS="--bar -0 -j ${SLURM_CPUS_PER_TASK}"
+else
+    PARALLEL_OPTS="-0 -j ${SLURM_CPUS_PER_TASK}"
+fi
+
 
 #Split input fasta into species specific fasta files
 module load Anaconda3; source activate biopython
@@ -35,10 +44,28 @@ python ${script_dir}/split_fasta_by_species.py ${in_fasta} output_species_dir
 conda deactivate
 
 #Align sequences
-
+module load Anaconda3; source activate mafft
+find output_species_dir -type f -name '*.fasta' -print0 \
+| parallel ${PARALLEL_OPTS} --env min_sequences '
+    count=$(grep -c "^>" "{}")
+    if [ "$count" -lt "$min_sequences" ]; then
+        exit 0
+    fi
+    mafft --thread 1 --quiet --auto "{}" > "{}.aligned"
+'
+conda deactivate
 
 #Calculate pairwise distances between all sequences within all taxa
-find output_species_dir -type f -name '*.fasta' -print0 \
-| parallel -0 -j "${SLURM_CPUS_PER_TASK}" "${MASH} triangle -E -p 1 {} > {}.lwrTriangle"
+module load Anaconda3; source activate emboss
+find output_species_dir -type f -name '*.aligned' -print0 \
+| parallel ${PARALLEL_OPTS} --env min_sequences '
+    count=$(grep -c "^>" "{}")
+    if [ "$count" -lt "$min_sequences" ]; then
+        exit 0
+    fi
+    distmat -sequence "{}" -nucmethod 1 -outfile "{}.lwrTri" 2>/dev/null
+'
+conda deactivate
 
+#Identify groupings#
 Rscript ${script_dir}/speciesDist_DirichletProcess.R output_species_dir
