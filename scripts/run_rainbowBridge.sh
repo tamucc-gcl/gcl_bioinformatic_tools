@@ -34,7 +34,7 @@
 # "nt" is the name of the NCBI's nucleotide database (without file extensions)
 
 # Load necessary modules (Launch - TAMUCC)
-module load GCC/13.2.0 rainbow_bridge/2024.07.15
+module load GCC/13.2.0 WebProxy rainbow_bridge/2024.07.15
 
 # Print SLURM configuration
 #env | grep SLURM
