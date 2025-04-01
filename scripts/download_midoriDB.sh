@@ -72,7 +72,7 @@ paste column1 column2 > taxid_map
 rm column1 column2 ${midori_dirty}
 
 #Clean-up the database by removing sequences too different from their species ID
-bash ${script_dir}/clean_midoriDB.sh "${midori_cleaned}"
+#bash ${script_dir}/clean_midoriDB.sh "${midori_cleaned}"
 
 #5 - Format for RainbowBridge
 BLAST=/scratch/group/p.bio240270.000/software/ncbi-blast-latest.img
