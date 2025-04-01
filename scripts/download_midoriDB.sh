@@ -26,6 +26,7 @@
 script_dir=/scratch/group/p.bio240270.000/gcl_bioinformatic_tools/scripts
 
 #1 - Identify most recently added fasta on MIDORI
+module load WebProxy
 module load Anaconda3; source activate r_env
 midori_url=$(Rscript ${script_dir}/get_midori_url.R)
 echo "Downloading: ${midori_url}"
