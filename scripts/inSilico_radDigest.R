@@ -82,7 +82,7 @@ processed_digestion <- expand_grid(enzyme1 = restriction_enzymes,
   filter(enzyme1 < enzyme2) %>%
   
   #Temp addition - need to rework to make possible to specify special enzyme
-  filter(enzyme1 == 'EcoRI', enzyme2 == 'MspI') %>%
+  # filter(enzyme1 == 'EcoRI', enzyme2 == 'MspI') %>%
   rowwise(enzyme1, enzyme2) %>%
   reframe(perform_digest(the_genome, 
                          RESTRICTION_ENZYMES[c(enzyme1, enzyme2)],
