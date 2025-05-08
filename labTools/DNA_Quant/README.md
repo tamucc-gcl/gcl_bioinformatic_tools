@@ -3,7 +3,7 @@
 1. Login to gawain shiny server: [http://10.5.146.65/DNA_Quantification/](http://10.5.146.65/DNA_Quantification/) (must be in TAMUCC or using VPN)
 2. Applications are designed to be run in order
 	1. [`http://10.5.146.65/DNA_Quantification/1-quant_plate/`](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
-		- [`code/1 - quantPlate_shiny_2.R`]("code/1 - quantPlate_shiny_2.R")
+		- [`code/1 - quantPlate_shiny_2.R`](<code/1 - quantPlate_shiny_2.R>)
 	2. [`http://10.5.146.65/DNA_Quantification/2-DNA_concentration/`](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
 	3. [`http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/`](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR)
 
