@@ -10,12 +10,44 @@
 	2. [`http://10.5.146.65/DNA_Quantification/2-DNA_concentration/`](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
 		- [`code/2 - dna_amount_shiny7.R`](<code/2 - dna_amount_shiny7.R>)
 		- Inputs: 
+			-Data Input:
+				- Plate Map File: 
+				- Excel Sheet Name: Specify the sheet within the plate map file which is formatted properly (see example)
+				- Upload Quant Output Files (select all): Output from App1
+				- Quant Stage: Are these requants or original.
+			- DNA Concentrations
+				- Select DNA Concentration: Column containing DNA concentrations (attempts to auto-populate)
+				- Model Settings: Optional model fitting controls (Advanced user setting)
+					- Number of Chains: How many independent model chains to run
+					- Number of Sampling Iterations: Total number of samples to draw from the posterior
+					- Number of Warmup Iterations: How many of the total samples are used to parameterize fitting
+					- Thinning Interval: How many samples to discard to get uncorrelated posterior samples
+				- Priors Settings: Optional prior setting controls (Advanced user setting)
+					- Intercept Prior Mean: 
+					- Intercept Prior SD: 
+					- Beta Prior Mean: 
+					- Beta Prior SD: 
+					- Variance Prior Parameter 1: 
+					- Variance Prior Parameter 2: 
+					- Intercept Shape Prior Mean: 
+					- Intercept Shape Prior SD: 
+					- Beta Shape Prior Mean: 
+					- Beta Shape Prior SD: 
+					- Variance Shape Prior Parameter 1: 
+					- Variance Shape Prior Parameter 2: 
+				- Flag Settings:
+					- Minimum Pipettable Volume: 
+					- Maximum Low Volume:
+					- Target Amount of DNA: 
 		- Output:
 		- Process: 
+			- Merges all the quantification output files with the plate map file
+			- Based on quant replication calculates 
 	3. [`http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/`](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR)
 		- [`code/3 - Normalize_DNA_for_PCR.R`](<code/3 - Normalize_DNA_for_PCR.R>)
 		- Inputs:
-			- Output from App2
+			- Upload Sample Concentration CSV(s)
+				- Output from App2
 			- µL per PCR: Volume of DNA used in the PCR recipe
 				- `input$ul_per_PCR`
 			- Number of PCR reactions: The number of PCR reactions you would like to be able to perform
