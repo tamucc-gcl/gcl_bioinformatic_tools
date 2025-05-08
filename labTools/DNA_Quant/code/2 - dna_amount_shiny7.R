@@ -62,10 +62,10 @@ read_plate_map <- function(filepath, sheet_name) {
     clean_names() %>% 
     # filter(!is.na(plate_row), !is.na(plate_row), !is.na(plate_id)) %>%
     mutate(across(where(is.character), str_to_lower)) %>%
-    rename(plate_id = any_of('sample_plate')) %>% #colnames
+    # rename(plate_id = any_of('sample_plate')) %>% #colnames
     rename_with(~str_replace(., 'sample', 'plate'),
                 .cols = c(starts_with('sample'), 
-                          -any_of('sample_id'))) %>%
+                          -any_of(c('sample_id', 'sample_type')))) %>%
     rename_with(~str_replace(., 'column$', 'col')) %>%
     rename(dna_plate_id = plate_id,
            dna_plate_col = plate_col,
@@ -140,8 +140,8 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
   #                         'zymo_plate_row')
   # }
   join_vars <- identify_join_cols(map_data, quant_data)
-  message('DEBUG: join_vars: ', str_c(join_vars, collapse = '; '))
-  message('DEBUG: names(join_vars): ', str_c(names(join_vars), collapse = '; '))
+  # message('DEBUG: join_vars: ', str_c(join_vars, collapse = '; '))
+  # message('DEBUG: names(join_vars): ', str_c(names(join_vars), collapse = '; '))
   
   
   out <- inner_join(map_data,
@@ -317,7 +317,7 @@ server <- function(input, output, session) {
     quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE)) %>%
       rename_with(~str_replace(., 'column', 'col'))
     
-    message('DEBUG: quant_type: ', input$quant_type)
+    # message('DEBUG: quant_type: ', input$quant_type)
     # Merge the plate map with the quant data using an inner join
     merged_dna_quants <- join_quants_map(dna_plate_map,
                                          quant_plates,
@@ -342,12 +342,12 @@ server <- function(input, output, session) {
     req(joined_data(), input$y_var)
     
     # message("DEBUG: Local Files: ", str_c(list.files(), collapse = ', '))
-    message("DEBUG: Chains: ", input$num_chains)
-    message("DEBUG: Cores: ", min(c(parallelly::availableCores(),
-                                    input$num_chains)))
-    message("DEBUG: Threads: ", parallelly::availableCores() %/% min(c(parallelly::availableCores(),
-                                                                       input$num_chains)))
-    message("DEBUG: Available Cores: ", parallelly::availableCores())
+    # message("DEBUG: Chains: ", input$num_chains)
+    # message("DEBUG: Cores: ", min(c(parallelly::availableCores(),
+    #                                 input$num_chains)))
+    # message("DEBUG: Threads: ", parallelly::availableCores() %/% min(c(parallelly::availableCores(),
+    #                                                                    input$num_chains)))
+    # message("DEBUG: Available Cores: ", parallelly::availableCores())
     
     
     model_formula <- str_c(input$y_var, '~ is_control + (1 | sample_id)')
@@ -367,7 +367,7 @@ server <- function(input, output, session) {
                                  cpp_options = list(stan_threads = TRUE))
     }
 
-    message("DEBUG: Read Model")
+    # message("DEBUG: Read Model")
     # Note: Stan expects "inteceptShape_prior" (without the "r") as in the original code.
     data_stan <- c(
       make_standata(bf(as.formula(model_formula),
@@ -397,7 +397,7 @@ server <- function(input, output, session) {
     if (!dir.exists(output_dir)) {
       dir.create(output_dir)
     }
-    message("DEBUG: Made TEMP-DIR")
+    # message("DEBUG: Made TEMP-DIR")
     
     # Define the function to run sampling in the background using callr::r_bg.
     sampling_function <- function(data_stan, output_dir, num_chains, iter_sampling, iter_warmup, thin) {
@@ -428,13 +428,13 @@ server <- function(input, output, session) {
         show_exceptions = FALSE,
         output_dir = output_dir
       )
-      message("DEBUG: Chain 1:", stringr::str_c(fit$output(1), collapse = '\n'))
+      # message("DEBUG: Chain 1:", stringr::str_c(fit$output(1), collapse = '\n'))
       
       fit$output_files()
     }
     
     # Launch sampling in the background with user-defined settings.
-    message("DEBUG: Start background R")
+    # message("DEBUG: Start background R")
     bg_process <- callr::r_bg(
       func = sampling_function,
       args = list(data_stan = data_stan,
@@ -475,7 +475,7 @@ server <- function(input, output, session) {
     
     # Wait for the background process to finish and retrieve the output file paths.
     output_files <- bg_process$get_result()
-    message("DEBUG: End Sub-process")
+    # message("DEBUG: End Sub-process")
     
     # Reconstruct the Stan fit using the output files.
     dna_model_bayes$fit <- read_csv_as_stanfit(output_files, model = dna_model)
@@ -489,6 +489,7 @@ server <- function(input, output, session) {
   
   # Display the model summary in the DNA Concentrations tab
   output$model_summary <- renderPrint({
+    message("DEBUG: Model Summary")
     model_fit()
   })
   
@@ -498,6 +499,7 @@ server <- function(input, output, session) {
     req(joined_data(), input$y_var, model_fit())
     dna_model_bayes <- model_fit()
     
+    message("DEBUG: Start calculating metrics")
     # write_csv(joined_data(), 'tmp.csv')
     # write_rds(dna_model_bayes, 'tmp.rds')
     
@@ -538,6 +540,8 @@ server <- function(input, output, session) {
              across(where(is.numeric), exp)) %>%
       select(is_control, lwr_limit = lwr, upr_limit = upr)
     
+    message("DEBUG: Finish calculating metrics")
+    
     list(
       quant_files_summarized = quant_files_summarized,
       mean_dna_concentration = mean_dna_concentration,
@@ -554,8 +558,9 @@ server <- function(input, output, session) {
     dna_quantity_interval <- dna_summary()$dna_quantity_interval
     dna_variability_interval <- dna_summary()$dna_variability_interval
     
-    # write_csv(quant_files_summarized, 'model/before_flagging.csv')
     
+    # write_csv(quant_files_summarized, 'model/before_flagging.csv')
+    message("DEBUG: Start Flagging")
     quant_files_flagged <- quant_files_summarized %>%
       mutate(ul_per_rxn = (input$target_dna * mean_dna_concentration) / !!sym(str_c(input$y_var, "_mean")),
              ul_per_rxn = case_when(ul_per_rxn > input$max_low_volume & is_control ~ input$max_low_volume,
@@ -571,9 +576,9 @@ server <- function(input, output, session) {
                                                   NA_real_),
              postDilution_ul_per_rxn = (input$target_dna * mean_dna_concentration) / postDilution_concentration,
              postDilution_ul_per_rxn = round(postDilution_ul_per_rxn),
-             rxn_ng = if_else(is.na(ul_per_rxn),
-                              postDilution_concentration * postDilution_ul_per_rxn,
-                              !!sym(str_c(input$y_var, "_mean")) * ul_per_rxn)) %>%
+             !!sym(str_c('rxn_', str_extract(input$y_var, '[pn]g'))) := if_else(is.na(ul_per_rxn),
+                                                                                postDilution_concentration * postDilution_ul_per_rxn,
+                                                                                !!sym(str_c(input$y_var, "_mean")) * ul_per_rxn)) %>%
       left_join(select(dna_variability_interval, is_control, var_upr_limit = upr_limit),
                 by = "is_control") %>%
       left_join(select(dna_quantity_interval, is_control, mean_upr_limit = upr_limit),
@@ -592,8 +597,9 @@ server <- function(input, output, session) {
              flags,
              ul_per_rxn, dilution_factor,
              starts_with("postDilution"),
-             rxn_ng)
+             any_of(c('rxn_ng', 'rxn_pg')))
     
+    message("DEBUG: End Flagging")
     # write_csv(quant_files_flagged, 'model/after_flagging.csv')
     
     quant_files_flagged
@@ -609,6 +615,13 @@ server <- function(input, output, session) {
     dna_quantity_interval <- dna_summary()$dna_quantity_interval
     dna_variability_interval <- dna_summary()$dna_variability_interval
     
+    # write_rds(quant_files_flagged, 'outdir/quant_files_flagged.rds')
+    # write_rds(mean_dna_concentration, 'outdir/mean_dna_concentration.rds')
+    # write_rds(dna_quantity_interval, 'outdir/dna_quantity_interval.rds')
+    # write_rds(dna_variability_interval, 'outdir/dna_variability_interval.rds')
+    
+    
+    message("DEBUG: Start Plotting")
     colour_fill_choices <- distinct(quant_files_flagged, sample_type, flags) %>%
       mutate(int_name = str_c(sample_type, flags, sep = "."),
              colour = case_when(
@@ -631,7 +644,8 @@ server <- function(input, output, session) {
       #                                  sprintf('%02d', coalesce(dna_plate_col, zymo_plate_col))),
       #        facet_plate = coalesce(dna_plate_id, zymo_plate_id)) %>%
       mutate(dna_plate_well_id = str_extract(sample_id, '_[a-zA-Z][0-9]+$') %>% str_remove('_'),
-             facet_plate = str_remove(sample_id, str_c('_', dna_plate_well_id))) %>%
+             facet_plate = str_remove(sample_id, str_c('_', dna_plate_well_id)),
+             sample_type = fct_relevel(sample_type, 'sample', after = 0L)) %>%
       ggplot(aes(y = dna_plate_well_id,
                  x = !!sym(str_c(input$y_var, "_mean")),
                  shape = sample_type,
@@ -646,39 +660,45 @@ server <- function(input, output, session) {
       geom_point(size = 1.5) +
       scale_colour_manual(values = colour_values) +
       scale_fill_manual(values = fill_values) +
-      scale_shape_manual(values = c("sample" = 'circle filled', 
-                                    "extraction control" = 'triangle filled', 
-                                    "field control" = 'triangle down filled', 
+      scale_shape_manual(values = c("sample" = 'circle filled',
+                                    'control' = 'circle filled',
+                                    "extraction control" = 'triangle filled',
+                                    "field control" = 'triangle down filled',
                                     "filter control" = 'square filled'),
-                         breaks = c("sample", "field control", "filter control", "extraction control"),
                          labels = str_to_title) +
+      
       scale_linetype_manual(values = c("TRUE" = "dashed", "FALSE" = "solid"),
                             labels = c("TRUE" = "Control", "FALSE" = "Sample")) +
-      guides(shape = guide_legend(override.aes = list(fill = if_else(str_detect(unique(quant_files_flagged$sample_type), 'control'), 
+      guides(shape = guide_legend(override.aes = list(fill = if_else(str_detect(unique(quant_files_flagged$sample_type), 
+                                                                                'control'),
                                                                      'black', 'white'),
                                                       size = 3)),
              fill = "none",
              colour = guide_legend(override.aes = list(size = 3))) +
       facet_wrap(~facet_plate, nrow = 1, scales = "free_y") +
       theme_bw() +
-      labs(x = "DNA Concentration (ng/uL) \u00b1 95% CI",
+      labs(x = str_c("DNA Concentration (", str_extract(input$y_var, '[pn]g'), "/uL) \u00b1 95% CI"),
            y = "Sample Well ID",
            color = "Sample Flag",
            shape = "Sample Type",
            linetype = "Sample Type") +
       theme(axis.text.x = element_text(size = 7))
     
+    
+    
     if (input$log_transform) {
       quant_plot <- quant_plot + 
         scale_x_continuous(transform = scales::log10_trans(),
                            labels = scales::comma_format())
     }
-    
+    message("DEBUG: End Plotting")
     quant_plot
   })
   
   output$dna_plot <- renderPlot({
+    # message("DEBUG: Start Rendering Plotting")
     plot_obj()
+    # message("DEBUG: End Rendering Plotting")
   })
   
   # Download handler using shinyFiles save button selection.

@@ -39,6 +39,7 @@
 			- Merges all the quantification output files with the plate map file
 			- Based on quant replication samples calculates the average concentration of each sample
 				- If there is a `sample_type` column splits estimates between samples and control (specified by including the word "control" in the sample_type column
+					- Acceptable values in `sample_type` are: 'sample', 'control', 'extraction control', 'field control', and 'filter control'
 				- Partial pooling of sample ID to improve individual estimates by using information from all samples
 				- Variation in concentration allowed to vary by sample (ie. no assumption of equal variance)
 				- `input$y_var ~ is_control + (1 | sample_id)` & `shape ~ is_control + (1 | sample_id)`
