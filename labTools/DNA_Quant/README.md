@@ -16,13 +16,13 @@
 		- [`code/3 - Normalize_DNA_for_PCR.R`](<code/3 - Normalize_DNA_for_PCR.R>)
 		- Inputs:
 			- Output from App2
-			- µL per PCR: 
+			- µL per PCR: Volume of DNA used in the PCR recipe
 				- `input$ul_per_PCR`
 			- Number of PCR reactions: The number of PCR reactions you would like to be able to perform
 				- `input$number_PCR_rxns`
 			- DNA per PCR (ng): The amount of DNA desired in each PCR reaction
 				- `input$DNA_per_PCR`
-			- Max volume per sample (µL):
+			- Max volume per sample (µL): The maximum volume of DNA you are willing to move to the transfer plate
 				- `input$max_vol`
 		- Outputs:
 		- Process:
