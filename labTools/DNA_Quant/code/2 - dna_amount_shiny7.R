@@ -251,6 +251,7 @@ ui <- fluidPage(
                                    numericInput("min_volume", "Minimum Pipettable Volume", value = 0.75, min = 0),
                                    numericInput("max_low_volume", "Maximum Low Volume", value = 4, min = 0),
                                    numericInput("target_dna", "Target Amount of DNA", value = 2, min = 0),
+                                   numericInput("mean_multiple", "Excess DNA is 'X' times more than the mean", value = 2, min = 0),
                                    style = "primary"
                    ),
                    open = "Flag Settings"
@@ -573,13 +574,15 @@ server <- function(input, output, session) {
              rxn_ng = if_else(is.na(ul_per_rxn),
                               postDilution_concentration * postDilution_ul_per_rxn,
                               !!sym(str_c(input$y_var, "_mean")) * ul_per_rxn)) %>%
-      left_join(select(dna_variability_interval, is_control, upr_limit),
+      left_join(select(dna_variability_interval, is_control, var_upr_limit = upr_limit),
                 by = "is_control") %>%
+      left_join(select(dna_quantity_interval, is_control, mean_upr_limit = upr_limit),
+                by = 'is_control') %>%
       mutate(flags = case_when(
         is_control & !!sym(str_c(input$y_var, "_upr95")) > mean_dna_concentration ~ "Contaminated Control",
-        !is.na(postDilution_concentration) & !!sym(str_c(input$y_var, "_normspread")) > upr_limit ~ "Excess & Variable DNA",
-        !is.na(postDilution_concentration) ~ "Excess DNA",
-        !!sym(str_c(input$y_var, "_normspread")) > upr_limit ~ "Variable DNA",
+        !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) & !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Excess & Variable DNA",
+        !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) ~ "Excess DNA",
+        !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Variable DNA",
         TRUE ~ "Good Sample"),
         .after = sample_type) %>%
 

@@ -7,6 +7,7 @@
 		- Inputs: 
 		- Output:
 		- Process: 
+		
 	2. [`http://10.5.146.65/DNA_Quantification/2-DNA_concentration/`](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
 		- [`code/2 - dna_amount_shiny7.R`](<code/2 - dna_amount_shiny7.R>)
 		- Inputs: 
@@ -17,6 +18,7 @@
 				- Quant Stage: Are these requants or original.
 			- DNA Concentrations
 				- Select DNA Concentration: Column containing DNA concentrations (attempts to auto-populate)
+					- `input$y_var`
 				- Model Settings: Optional model fitting controls (Advanced user setting)
 					- Number of Chains: How many independent model chains to run
 					- Number of Sampling Iterations: Total number of samples to draw from the posterior
@@ -36,13 +38,46 @@
 					- Variance Shape Prior Parameter 1: 
 					- Variance Shape Prior Parameter 2: 
 				- Flag Settings:
-					- Minimum Pipettable Volume: 
-					- Maximum Low Volume:
-					- Target Amount of DNA: 
+					- Minimum Pipettable Volume: The smallest volume that you would like to pipette (µL)
+						- `input$min_volume`
+					- Maximum Low Volume: The maximum volume to take from low concentration DNA samples (µL)
+						- `input$max_low_volume `
+					- Target Amount of DNA: The goal quantity of DNA to have in the normalized sample (ng or pg depending on input)
+						- `input$target_dna`
+					- Excess DNA is 'X' times more than the mean: Flag samples which are "X" times greater than the mean DNA concentration
+						- `input$mean_multiple`
 		- Output:
 		- Process: 
 			- Merges all the quantification output files with the plate map file
-			- Based on quant replication calculates 
+			- Based on quant replication samples calculates the average concentration of each sample
+				- If there is a `sample_type` column splits estimates between samples and control (specified by including the word "control" in the sample_type column
+				- Partial pooling of sample ID to improve individual estimates by using information from all samples
+				- Variation in concentration allowed to vary by sample (ie. no assumption of equal variance)
+				- `input$y_var ~ is_control + (1 | sample_id)` & `shape ~ is_control + (1 | sample_id)`
+			- Calculate a dilution factor and post-dilution measures (if needed)
+				- Calculate the target template volume to pipette
+					- `ul_per_rxn = (input$target_dna * mean_dna_concentration) / !!sym(str_c(input$y_var, "_mean"))`
+					- `mean_dna_concentration` is the calculated mean DNA concentration of all samples (excluding controls)
+				- Volume limits:
+					- If the target template volume is more than the the specified max volume then use the specified max volume
+						- `ul_per_rxn > input$max_low_volume ~ input$max_low_volume`
+					- If the target template volume is less than the minimum pipettable volume then calculate a dilution to perform
+						- `ul_per_rxn < input$min_volume ~ NA_real_`
+						- dilute to the overall average concentration of samples (excluding any controls)
+							- `is.na(ul_per_rxn) ~ measured_conc / mean_dna_concentration`
+							- The dilution factor is rounded for easier pipetting
+						- Calculate the post-dilution concentration and volumes of DNA
+							- `postDilution_concentration = if_else(dilution_factor > 0, measured_conc / dilution_factor, NA_real_)`
+							- `postDilution_ul_per_rxn = round((input$target_dna * mean_dna_concentration) / postDilution_concentration)`
+			- Calculate the amount of DNA for the reaction (post-dilution if indicated)
+				- `rxn_ng = if_else(is.na(ul_per_rxn), postDilution_concentration * postDilution_ul_per_rxn, measured_conc * ul_per_rxn)`
+			- Flag potential samples of interest
+				- Any control sample where the upper 95% confidence interval of the DNA concentration is larger than the average of the non-control sample concentrations is flagged as a potential contaminant.
+				- Any sample which has more dispersion than the 95% variance confidence interval is flagged as an uncertain estimate.
+				- Any sample with a DNA concentration in excess of X times the mean DNA concentration (user specified)
+				- Any sample which is both highly variable and as an excess of DNA
+				
+			
 	3. [`http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/`](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR)
 		- [`code/3 - Normalize_DNA_for_PCR.R`](<code/3 - Normalize_DNA_for_PCR.R>)
 		- Inputs:
