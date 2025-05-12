@@ -306,6 +306,19 @@ server <- function(input, output, session) {
                       selected = str_subset(numeric_cols, '_per_ul'))
   })
   
+  observeEvent(input$y_var, {
+    # pull the unit from the selected column name: “ng” or “pg”
+    unit <- stringr::str_extract(input$y_var, "[pn]g")   # returns "ng" or "pg"
+    
+    if (!is.na(unit)) {
+      updateNumericInput(
+        session,
+        inputId = "target_dna",
+        label   = paste0("Target Amount of DNA (", unit, ")")
+      )
+    }
+  })
+  
   # Reactive expression for joined data, triggered by the Load Data button
   joined_data <- eventReactive(input$load_data, {
     req(input$excel_file, input$sheet_name, input$csv_files, input$y_var)

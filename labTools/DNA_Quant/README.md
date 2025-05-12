@@ -5,6 +5,12 @@
 	1. [`http://10.5.146.65/DNA_Quantification/1-quant_plate/`](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
 		- [`code/1 - quantPlate_shiny_2.R`](<code/1 - quantPlate_shiny_2.R>)
 		- Inputs: 
+			- Raw Data File: [`example_data/quant_rawData_accublue-nextgen.csv`](example_data/quant_rawData_accublue-nextgen.csv)
+			- Plate Map File: [`example_data/quant_plateMap_accublue-nextgen.csv`](example_data/quant_plateMap_accublue-nextgen.csv)
+			- Quant Kit Used: Attempts to autofill based on the filenames above. One of "Accublue-nextgen" (pg) or "accublue" or "accuclear" (ng)
+			- X Variable (Independent Variable): Autofills with "rfu" (column Value in raw data file)
+			- Y Variable (Dependent Variable): Autofills with "[pn]g_per_well" depending on quant kit detected
+			- Enter Standard Rows: Autofills based on plate_id column being "standard" in plate map file
 		- Output:
 		- Process: 
 		
@@ -12,7 +18,7 @@
 		- [`code/2 - dna_amount_shiny7.R`](<code/2 - dna_amount_shiny7.R>)
 		- Inputs: 
 			-Data Input:
-				- Plate Map File: 
+				- Plate Map File: [`example_data/overall_dna-extract-plate-map.xlsx`](example_data/overall_dna-extract-plate-map.xlsx)
 				- Excel Sheet Name: Specify the sheet within the plate map file which is formatted properly (see example)
 				- Upload Quant Output Files (select all): Output from App1
 				- Quant Stage: Are these requants or original.
