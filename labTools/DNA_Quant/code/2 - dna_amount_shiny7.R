@@ -777,7 +777,7 @@ server <- function(input, output, session) {
     out_table <- select(joined_data(), -rfu, -input$y_var, 
                         -is_control,
                         -starts_with('quant')) %>% 
-      full_join(flagged_table(),
+      full_join(select(flagged_table(), matches('sample_type')),
                 by = 'sample_id') %>%
       mutate(flags = na_if(flags, 'Good Sample'),
              quant_stage = input$quant_type) %>%
