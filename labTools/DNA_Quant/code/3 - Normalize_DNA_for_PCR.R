@@ -38,6 +38,8 @@ server <- function(input, output, session) {
       slice_head(n = 1) %>%
       ungroup()
     
+    dna_conc_var <- str_subset(colnames(dna_concentration, '[np]_per_ul_mean'))
+    dna_per_pcr <- if_else(str_detect(dna_conc_var, '^pg'), input$DNA_per_PCR * 1000, input$DNA_per_PCR)
     # message('DEBUG: ', str_c(colnames(dna_concentration), collapse = '; '))
     # 
     # message('DEBUG: ', input$DNA_per_PCR)
@@ -47,12 +49,13 @@ server <- function(input, output, session) {
     
     # Perform calculations
     dna_concentration <- dna_concentration %>%
-      mutate(goal_volume_ul = (input$number_PCR_rxns * input$DNA_per_PCR) / ng_per_ul_mean) %>%
+      mutate(goal_volume_ul = (input$number_PCR_rxns * dna_per_pcr) / !!sym(dna_conc_var)) %>%
       mutate(transfer_volume = if_else(goal_volume_ul > input$max_vol,
                                        input$max_vol,
                                        goal_volume_ul),
              ul_to_add = (input$number_PCR_rxns * input$ul_per_PCR) - transfer_volume,
-             actual_ng_dna_per_pcr = (ng_per_ul_mean * transfer_volume) / input$number_PCR_rxns) %>%
+             !!sym(str_c('actual_', str_extract(dna_per_pcr, '^[pn]'),'g_dna_per_pcr')) := 
+               (!!sym(dna_conc_var) * transfer_volume) / input$number_PCR_rxns) %>%
       select(-goal_volume_ul)
     
     dna_concentration

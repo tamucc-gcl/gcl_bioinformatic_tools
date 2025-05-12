@@ -248,9 +248,9 @@ ui <- fluidPage(
                  # 4. Flag Settings (grouped but not collapsible)
                  bsCollapse(
                    bsCollapsePanel("Flag Settings",
-                                   numericInput("min_volume", "Minimum Pipettable Volume", value = 0.75, min = 0),
-                                   numericInput("max_low_volume", "Maximum Low Volume", value = 4, min = 0),
-                                   numericInput("target_dna", "Target Amount of DNA", value = 2, min = 0),
+                                   numericInput("min_volume", "Minimum Pipettable Volume (μL)", value = 0.75, min = 0),
+                                   numericInput("max_low_volume", "Maximum Low Volume (μL)", value = 4, min = 0),
+                                   numericInput("target_dna", "Target Amount of DNA (ng)", value = 2, min = 0),
                                    numericInput("mean_multiple", "Excess DNA is 'X' times more than the mean", value = 2, min = 0),
                                    style = "primary"
                    ),
