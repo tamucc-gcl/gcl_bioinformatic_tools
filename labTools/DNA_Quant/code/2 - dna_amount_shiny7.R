@@ -337,6 +337,7 @@ server <- function(input, output, session) {
                                          input$quant_type) %>%
       process_merged_data() 
     
+    # write_csv(merged_dna_quants, 'model/joined.csv')
     merged_dna_quants
   })
   
@@ -790,7 +791,10 @@ server <- function(input, output, session) {
     out_table <- select(joined_data(), -rfu, -input$y_var, 
                         -is_control,
                         -starts_with('quant')) %>% 
-      full_join(select(flagged_table(), matches('sample_type')),
+      full_join(select(flagged_table(), 
+                       matches('sample_id'),
+                       matches('sample_type'),
+                       flags),
                 by = 'sample_id') %>%
       mutate(flags = na_if(flags, 'Good Sample'),
              quant_stage = input$quant_type) %>%
