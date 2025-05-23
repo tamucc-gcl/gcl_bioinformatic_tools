@@ -678,7 +678,8 @@ server <- function(input, output, session) {
                                     'control' = 'circle filled',
                                     "extraction control" = 'triangle filled',
                                     "field control" = 'triangle down filled',
-                                    "filter control" = 'square filled'),
+                                    "filter control" = 'square filled',
+                                    "pcr control" = "diamond filled"),
                          labels = str_to_title) +
       
       scale_linetype_manual(values = c("TRUE" = "dashed", "FALSE" = "solid"),
