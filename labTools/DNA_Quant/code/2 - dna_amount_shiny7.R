@@ -768,6 +768,8 @@ server <- function(input, output, session) {
     
     # Ensure required reactives are available
     req(joined_data(), flagged_table())
+    # write_csv(joined_data(), 'outdir/joined_data.csv')
+    # write_csv(flagged_table(), 'outdir/flagged_table.csv')
     
     # Generate a prefix from file names (your existing helper)
     
@@ -792,9 +794,11 @@ server <- function(input, output, session) {
     out_table <- select(joined_data(), -rfu, -input$y_var, 
                         -is_control,
                         -starts_with('quant')) %>% 
+      distinct() %>%
       full_join(select(flagged_table(), 
                        matches('sample_id'),
-                       matches('sample_type'),
+                       # matches('sample_type'),
+                       starts_with(input$y_var),
                        flags),
                 by = 'sample_id') %>%
       mutate(flags = na_if(flags, 'Good Sample'),
