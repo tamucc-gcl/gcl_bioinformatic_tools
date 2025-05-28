@@ -696,7 +696,7 @@ server <- function(input, output, session) {
            y = "Sample Well ID",
            color = "Sample Flag",
            shape = "Sample Type",
-           linetype = "Sample Type") +
+           linetype = "Sample Type (Mean)") +
       theme(axis.text.x = element_text(size = 7))
     
     
