@@ -198,6 +198,8 @@
   <li><a target="_blank" rel="noopener noreferrer" href="3-DNA_normalization_PCR/">③ Optionally, Read in Data from Step 2, Calculate Normalization Volumes</a></li>
 </ul>
 
+<h2><a target="_blank" rel="noopener noreferrer" href="https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/README.md">Full Instruction</a></h2>
+
 <!-- Added the missing readme div -->
 <div id="readme" class="readme-content">
   <p class="loading">Loading README...</p>
@@ -207,7 +209,7 @@
 <script>
 (async () => {
   // Fixed URL - removed token and used proper raw.githubusercontent.com format
-  const url = "https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md";
+  const url = "https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/main/labTools/DNA_Quant/README.md";
 
   try {
     // Download the markdown file
@@ -233,6 +235,16 @@
 
     // Inject into the page
     document.getElementById("readme").innerHTML = html;
+    
+    // Fix external links to open in new tabs
+    const readmeDiv = document.getElementById("readme");
+    const links = readmeDiv.querySelectorAll('a[href^="http"]');
+    links.forEach(link => {
+      if (!link.getAttribute('target')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
   } catch (e) {
     document.getElementById("readme").innerHTML =
       `<div class="error">Couldn't load README: ${e.message}</div>`;
