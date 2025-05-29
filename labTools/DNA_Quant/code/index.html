@@ -4,64 +4,242 @@
   <meta charset="utf-8">
   <title>DNA Quantification Toolkit</title>
   <style>
-    body{font-family:sans-serif;max-width:860px;margin:2rem auto;line-height:1.5}
-    h1{color:#222;}
-    ul{list-style:none;padding:0}
-    li{margin:.8rem 0}
-    a{font-weight:600;text-decoration:none;color:#0066c0}
-    a:hover{color:#004080}
-    .note{margin-top:2rem;font-size:.9rem;color:#555}
+    /* GitHub-style markdown rendering */
+    body {
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+      font-size: 16px;
+      line-height: 1.5;
+      color: #1f2328;
+      background-color: #ffffff;
+      max-width: 860px;
+      margin: 2rem auto;
+      padding: 0 16px;
+    }
     
-    /* Match GitHub’s list bullets & spacing */
-    ol, ul         { margin-left: 1.25em; }
-    ol ol          { list-style-type: lower-roman; }
-    ol ol ol       { list-style-type: lower-alpha; }
-    ul             { list-style-type: disc; }
-    ul ul          { list-style-type: square; }
-    ul ul ul       { list-style-type: circle; }
-    /* Optional tighter line-height inside lists */
-    li             { margin: .25em 0; }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 24px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      line-height: 1.25;
+      color: #1f2328;
+    }
+    
+    h1 { font-size: 2em; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #d1d9e0; padding-bottom: 0.3em; }
+    h3 { font-size: 1.25em; }
+    h4 { font-size: 1em; }
+    h5 { font-size: 0.875em; }
+    h6 { font-size: 0.85em; color: #656d76; }
+    
+    p { margin-top: 0; margin-bottom: 16px; }
+    
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 16px;
+      padding-left: 2em;
+    }
+    
+    .nav-list {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .nav-list li {
+      margin: 0.8rem 0;
+    }
+    
+    li {
+      margin: 0.25em 0;
+    }
+    
+    a {
+      color: #0969da;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    a:hover {
+      color: #0550ae;
+      text-decoration: underline;
+    }
+    
+    code {
+      padding: 0.2em 0.4em;
+      margin: 0;
+      font-size: 85%;
+      white-space: break-spaces;
+      background-color: #f6f8fa;
+      border-radius: 6px;
+      font-family: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+    }
+    
+    pre {
+      padding: 16px;
+      overflow: auto;
+      font-size: 85%;
+      line-height: 1.45;
+      color: #1f2328;
+      background-color: #f6f8fa;
+      border-radius: 6px;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    
+    pre code {
+      display: inline;
+      max-width: auto;
+      padding: 0;
+      margin: 0;
+      overflow: visible;
+      line-height: inherit;
+      word-wrap: normal;
+      background-color: transparent;
+      border: 0;
+    }
+    
+    blockquote {
+      padding: 0 1em;
+      color: #656d76;
+      border-left: 0.25em solid #d1d9e0;
+      margin: 0 0 16px 0;
+    }
+    
+    table {
+      border-spacing: 0;
+      border-collapse: collapse;
+      margin-top: 0;
+      margin-bottom: 16px;
+      display: block;
+      width: max-content;
+      max-width: 100%;
+      overflow: auto;
+    }
+    
+    table th,
+    table td {
+      padding: 6px 13px;
+      border: 1px solid #d1d9e0;
+    }
+    
+    table th {
+      font-weight: 600;
+      background-color: #f6f8fa;
+    }
+    
+    table tr {
+      background-color: #ffffff;
+      border-top: 1px solid #d1d9e0;
+    }
+    
+    table tr:nth-child(2n) {
+      background-color: #f6f8fa;
+    }
+    
+    .note {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #656d76;
+      border-top: 1px solid #d1d9e0;
+      padding-top: 1rem;
+    }
+    
+    .readme-content {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #d1d9e0;
+    }
+    
+    .loading {
+      color: #656d76;
+      font-style: italic;
+    }
+    
+    .error {
+      color: #d1242f;
+      background-color: #fff8f8;
+      border: 1px solid #ffdddd;
+      padding: 1rem;
+      border-radius: 6px;
+    }
+    
+    /* GitHub alert boxes */
+    .markdown-alert {
+      padding: 0.5rem 1rem;
+      margin-bottom: 16px;
+      color: inherit;
+      border-left: .25em solid #d1d9e0;
+    }
+    
+    .markdown-alert-note {
+      border-left-color: #0969da;
+      color: #0969da;
+      background-color: #ddf4ff;
+    }
+    
+    .markdown-alert-important {
+      border-left-color: #8250df;
+      color: #8250df;
+      background-color: #fbf0ff;
+    }
+    
+    .markdown-alert-warning {
+      border-left-color: #bf8700;
+      color: #bf8700;
+      background-color: #fff8c5;
+    }
   </style>
 </head>
 <body>
 <h1>DNA Quantification Tools</h1>
 
-<ul>
+<ul class="nav-list">
   <li><a target="_blank" rel="noopener noreferrer" href="1-quant_plate/"   >① Read in Quant Data, Select Best Model, Output DNA Concentrations for Each Rep</a></li>
   <li><a target="_blank" rel="noopener noreferrer" href="2-DNA_concentration/" >② Read in Data from Step 1, Calculate Mean DNA Concentration Across Reps</a></li>
   <li><a target="_blank" rel="noopener noreferrer" href="3-DNA_normalization_PCR/">③ Optionally, Read in Data from Step 2, Calculate Normalization Volumes</a></li>
 </ul>
 
-<h2><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md">Full Instruction</a></h2>
+<!-- Added the missing readme div -->
+<div id="readme" class="readme-content">
+  <p class="loading">Loading README...</p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
 <script>
 (async () => {
-  /* 1️⃣  -- raw.githubusercontent.com, NOT github.com */
-  const url = "https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md?token=GHSAT0AAAAAAC4XSE2ZBWKTXFNOIJTRREDW2BYR6TQ";
+  // Fixed URL - removed token and used proper raw.githubusercontent.com format
+  const url = "https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md";
 
   try {
-    /* 2️⃣  Download the markdown file */
+    // Download the markdown file
     const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
     const md = await resp.text();
 
-    /* 3️⃣  Convert Markdown → HTML */
+    // Enhanced Showdown converter with GitHub-compatible options
     const html = new showdown.Converter({
                    tables: true,
-                   openLinksInNewWindow: true
+                   openLinksInNewWindow: true,
+                   strikethrough: true,
+                   tasklists: true,
+                   smoothLivePreview: true,
+                   simplifiedAutoLink: true,
+                   excludeTrailingPunctuationFromURLs: true,
+                   literalMidWordUnderscores: true,
+                   simpleLineBreaks: true,
+                   requireSpaceBeforeHeadingText: true,
+                   ghCodeBlocks: true,
+                   encodeEmails: true
                  }).makeHtml(md);
 
-    /* 4️⃣  Inject into the page */
+    // Inject into the page
     document.getElementById("readme").innerHTML = html;
   } catch (e) {
     document.getElementById("readme").innerHTML =
-      `<p style="color:red">Couldn’t load README: ${e.message}</p>`;
+      `<div class="error">Couldn't load README: ${e.message}</div>`;
     console.error("README fetch error:", e);
   }
 })();
 </script>
-
 
 <p class="note">Contact : jason.selwyn@tamucc.edu • Source code: <a
 href="https://github.com/tamucc-gcl/gcl_bioinformatic_tools/tree/main/labTools/DNA_Quant">GitHub</a></p>
