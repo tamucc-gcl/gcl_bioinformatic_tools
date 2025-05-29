@@ -6,6 +6,27 @@ library(stringr)   # you only need stringr, not the full tidyverse
 
 ui <- fluidPage(
   titlePanel("PCR Sample Concentration Processor"),
+  
+  # Custom navigation header that appears above content
+  div(
+    style = "border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px;",
+    div(
+      style = "display: flex; justify-content: space-between; align-items: center;",
+      # Left side - could add additional navigation elements here if needed
+      div(),
+      # Right side - Return to Menu button
+      tags$a(href = "http://10.5.146.65/DNA_Quantification/", 
+             target = "_blank",  # Remove this line if you want same tab
+             "Return to Menu",
+             style = paste0("color: #337ab7; text-decoration: none; font-weight: bold; ",
+                            "padding: 8px 16px; border: 1px solid #337ab7; ",
+                            "border-radius: 4px; background-color: #f8f9fa; ",
+                            "transition: background-color 0.2s;"),
+             onmouseover = "this.style.backgroundColor='#e9ecef'",
+             onmouseout = "this.style.backgroundColor='#f8f9fa'")
+    )
+  ),
+  
   sidebarLayout(
     sidebarPanel(
       fileInput("sample_files", "Upload Sample-concentration CSV", accept = ".csv"),

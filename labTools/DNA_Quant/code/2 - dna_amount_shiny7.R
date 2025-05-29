@@ -67,6 +67,10 @@ read_plate_map <- function(filepath, sheet_name) {
                 .cols = c(starts_with('sample'), 
                           -any_of(c('sample_id', 'sample_type')))) %>%
     rename_with(~str_replace(., 'column$', 'col')) %>%
+    rename_with(~str_remove(., '^pcr[12]_')
+                .cols = c(contains('plate_id'), 
+                          contains('plate_col'), 
+                          contains('plate_row'))) %>%
     rename(dna_plate_id = plate_id,
            dna_plate_col = plate_col,
            dna_plate_row = plate_row)
@@ -172,6 +176,27 @@ process_merged_data <- function(df){
 ui <- fluidPage(
   waiter::useWaiter(),
   titlePanel("Data Input Shiny App"),
+  
+  # Custom navigation header that appears above tab content on all tabs
+  div(
+    style = "border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px;",
+    div(
+      style = "display: flex; justify-content: space-between; align-items: center;",
+      # Left side - could add additional navigation elements here if needed
+      div(),
+      # Right side - Return to Menu button
+      tags$a(href = "http://10.5.146.65/DNA_Quantification/", 
+             target = "_blank",  # Remove this line if you want same tab
+             "Return to Menu",
+             style = paste0("color: #337ab7; text-decoration: none; font-weight: bold; ",
+                            "padding: 8px 16px; border: 1px solid #337ab7; ",
+                            "border-radius: 4px; background-color: #f8f9fa; ",
+                            "transition: background-color 0.2s;"),
+             onmouseover = "this.style.backgroundColor='#e9ecef'",
+             onmouseout = "this.style.backgroundColor='#f8f9fa'")
+    )
+  ),
+  
   tabsetPanel(
     tabPanel("Data Input",
              sidebarLayout(

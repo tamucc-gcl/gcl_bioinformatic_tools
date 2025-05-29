@@ -381,12 +381,23 @@ ui <- fluidPage(
         condition = "input.main_tab == 'Data Input'",
         fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
         fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
+        actionButton("load_data", "Load Data"),
+        br(),  
+        br(),  
         selectInput("quant_kit", "Quant Kit Used",
                     choices = c("accublue-nextgen", "accublue", "accuclear"),
                     selected = "accuclear"),
-        actionButton("load_data", "Load Data"),
-        uiOutput("x_var_selector"),
-        uiOutput("y_var_selector"),
+        
+        # Advanced settings - collapsible section
+        tags$details(
+          tags$summary(tags$b("Advanced Settings (click to expand/collapse)")),
+          br(),
+          uiOutput("x_var_selector"),
+          uiOutput("y_var_selector"),
+          style = "margin-top: 15px;"
+        ),
+        br(),  
+        br(),  
         textInput("selected_standards", "Enter Standard Rows (comma-separated or range, e.g. '193-196, 199'):", "")
       ),
       # "Standards to Drop" appears on multiple tabs
@@ -460,10 +471,54 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
+      # Custom navigation header that appears above tab content on all tabs
+      div(
+        style = "border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px;",
+        div(
+          style = "display: flex; justify-content: space-between; align-items: center;",
+          # Left side - could add additional navigation elements here if needed
+          div(),
+          # Right side - Return to Menu button
+          tags$a(href = "http://10.5.146.65/DNA_Quantification/", 
+                 target = "_blank",  # Remove this line if you want same tab
+                 "Return to Menu",
+                 style = paste0("color: #337ab7; text-decoration: none; font-weight: bold; ",
+                                "padding: 8px 16px; border: 1px solid #337ab7; ",
+                                "border-radius: 4px; background-color: #f8f9fa; ",
+                                "transition: background-color 0.2s;"),
+                 onmouseover = "this.style.backgroundColor='#e9ecef'",
+                 onmouseout = "this.style.backgroundColor='#f8f9fa'")
+        )
+      ),
+      
+      # Your existing tabsetPanel
       tabsetPanel(id = "main_tab",
-                  tabPanel("Data Input", DTOutput("data_table")),
-                  # tabPanel("Standards Preview", DTOutput("standards_table")),
+                  tabPanel("Data Input", 
+                           # Instructions for Data Input tab
+                           div(
+                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
+                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
+                             tags$ul(
+                               tags$li("Select the RFU Data and Plate Map Files"),
+                               tags$li("Click ", tags$code("Load Data")),
+                               tags$li("Confirm that the Quant Kit and Standard Rows were correctly detected"),
+                               tags$li("Go to ", tags$code("Model Results"), " Tab")
+                             )
+                           ),
+                           DTOutput("data_table")
+                  ),
                   tabPanel("Model Results", 
+                           # Instructions for Model Results tab
+                           div(
+                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
+                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
+                             tags$ul(
+                               tags$li("Evaluate how many data points are within the range of the standards, between the dashed lines (don't include 0 ng_per_well). If many data points are outside the range of the standards, then these estimates are unreliable and the quant protocol should be reevaluated."),
+                               tags$li("Scrutinize the standards. Sometimes a standard is off and it should be dropped if it doesn't follow the trend of the other standards."),
+                               tags$li("Scrutinize the top ranked model. Is it missing many data points? Does it look like a good fit? If something is off, consult with Sharon and Chris."),
+                               tags$li("Go to ", tags$code("Finalize"), " Tab")
+                             )
+                           ),
                            tagList(
                              plotOutput("model_grid"),
                              DTOutput("standards_influence_table"),
@@ -472,6 +527,16 @@ ui <- fluidPage(
                            )
                   ),
                   tabPanel("Finalize",
+                           # Instructions for Finalize tab
+                           div(
+                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
+                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
+                             tags$ul(
+                               tags$li("Confirm model and standards to use"),
+                               tags$li("Select ", tags$code("Generate Zip File")),
+                               tags$li("Select ", tags$code("Download Zip File"))
+                             )
+                           ),
                            fluidRow(
                              column(6,
                                     selectInput("chosen_models", "Choose Model(s) for Prediction:",
@@ -483,12 +548,7 @@ ui <- fluidPage(
                                                 choices = NULL, multiple = TRUE)
                              )
                            ),
-                           # br(),
-                           # downloadButton("download_csv", "Download Sample Predictions (CSV)"),
-                           # br(), br(),
-                           # downloadButton("download_json", "Download Model Details (JSON)"),
-                           br(), #br(),
-                           # downloadButton("download_zip", "Download Results (ZIP)")
+                           br(),
                            actionButton("generate_zip", "Generate Zip File"),
                            uiOutput("download_zip_ui")
                   )
@@ -1060,6 +1120,11 @@ server <- function(input, output, session) {
         geom_point(data = df_std,
                    aes(x = !!sym(x_var), y = !!sym(y_var), color = included_in_model),
                    size = 3) +
+        geom_text(data = df_std,
+                  aes(x = !!sym(x_var), y = !!sym(y_var), color = included_in_model,
+                      label = standard_index),
+                  size = 3, hjust = 'inward', vjust = 'inward',
+                  show.legend = FALSE) +
         geom_vline(xintercept = range_rfu,
                    linetype = 2) +
         annotate("text",
