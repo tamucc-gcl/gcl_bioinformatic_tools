@@ -30,9 +30,9 @@ Process raw fluorescence data from plate readers and calculate DNA concentration
 
 ### Input Files
 - **Raw Data File:** Fluorescence readings from plate reader
-  - Example: [`quant_rawData_accublue-nextgen.csv`](example_data/quant_rawData_accublue-nextgen.csv)
+  - Example: [`quant_rawData_accublue-nextgen.csv`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/example_data/quant_rawData_accublue-nextgen.csv)
 - **Plate Map File:** Sample layout and standard information  
-  - Example: [`quant_plateMap_accublue-nextgen.csv`](example_data/quant_plateMap_accublue-nextgen.csv)
+  - Example: [`quant_plateMap_accublue-nextgen.csv`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/example_data/quant_plateMap_accublue-nextgen.csv)
 
 ### Configuration Parameters
 | Parameter | Auto-Fill Behavior | Description |
@@ -63,7 +63,7 @@ Calculate mean DNA concentrations across replicates using Bayesian statistical m
 
 ### Input Files
 - **Plate Map File:** Overall sample information
-  - Example: [`overall_dna-extract-plate-map.xlsx`](example_data/overall_dna-extract-plate-map.xlsx)
+  - Example: [`overall_dna-extract-plate-map.xlsx`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/example_data/overall_dna-extract-plate-map.xlsx)
 - **Quant Output Files:** Results from Application 1 (select all relevant files)
 
 ### Key Parameters
