@@ -379,7 +379,7 @@ ui <- fluidPage(
       # Shown only on Data Input tab
       conditionalPanel(
         condition = "input.main_tab == 'Data Input'",
-        fileInput("file_raw", "Upload Raw Data File", accept = c(".csv", ".xls", ".xlsx")),
+        fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
         fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
         selectInput("quant_kit", "Quant Kit Used",
                     choices = c("accublue-nextgen", "accublue", "accuclear"),

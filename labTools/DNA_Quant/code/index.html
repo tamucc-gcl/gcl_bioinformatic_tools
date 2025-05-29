@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DNA Quantification Toolkit</title>
+  <style>
+    body{font-family:sans-serif;max-width:860px;margin:2rem auto;line-height:1.5}
+    h1{color:#222;}
+    ul{list-style:none;padding:0}
+    li{margin:.8rem 0}
+    a{font-weight:600;text-decoration:none;color:#0066c0}
+    a:hover{color:#004080}
+    .note{margin-top:2rem;font-size:.9rem;color:#555}
+    
+    /* Match GitHub’s list bullets & spacing */
+    ol, ul         { margin-left: 1.25em; }
+    ol ol          { list-style-type: lower-roman; }
+    ol ol ol       { list-style-type: lower-alpha; }
+    ul             { list-style-type: disc; }
+    ul ul          { list-style-type: square; }
+    ul ul ul       { list-style-type: circle; }
+    /* Optional tighter line-height inside lists */
+    li             { margin: .25em 0; }
+  </style>
+</head>
+<body>
+<h1>DNA Quantification Tools</h1>
+
+<ul>
+  <li><a target="_blank" rel="noopener noreferrer" href="1-quant_plate/"   >① Read in Quant Data, Select Best Model, Output DNA Concentrations for Each Rep</a></li>
+  <li><a target="_blank" rel="noopener noreferrer" href="2-DNA_concentration/" >② Read in Data from Step 1, Calculate Mean DNA Concentration Across Reps</a></li>
+  <li><a target="_blank" rel="noopener noreferrer" href="3-DNA_normalization_PCR/">③ Optionally, Read in Data from Step 2, Calculate Normalization Volumes</a></li>
+</ul>
+
+<h2><a target="_blank" rel="noopener noreferrer" href="https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md">Full Instruction</a></h2>
+
+<script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
+<script>
+(async () => {
+  /* 1️⃣  -- raw.githubusercontent.com, NOT github.com */
+  const url = "https://raw.githubusercontent.com/tamucc-gcl/gcl_bioinformatic_tools/refs/heads/main/labTools/DNA_Quant/README.md?token=GHSAT0AAAAAAC4XSE2ZBWKTXFNOIJTRREDW2BYR6TQ";
+
+  try {
+    /* 2️⃣  Download the markdown file */
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const md = await resp.text();
+
+    /* 3️⃣  Convert Markdown → HTML */
+    const html = new showdown.Converter({
+                   tables: true,
+                   openLinksInNewWindow: true
+                 }).makeHtml(md);
+
+    /* 4️⃣  Inject into the page */
+    document.getElementById("readme").innerHTML = html;
+  } catch (e) {
+    document.getElementById("readme").innerHTML =
+      `<p style="color:red">Couldn’t load README: ${e.message}</p>`;
+    console.error("README fetch error:", e);
+  }
+})();
+</script>
+
+
+<p class="note">Contact : jason.selwyn@tamucc.edu • Source code: <a
+href="https://github.com/tamucc-gcl/gcl_bioinformatic_tools/tree/main/labTools/DNA_Quant">GitHub</a></p>
+</body>
+</html>
