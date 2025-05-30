@@ -67,7 +67,7 @@ read_plate_map <- function(filepath, sheet_name) {
                 .cols = c(starts_with('sample'), 
                           -any_of(c('sample_id', 'sample_type')))) %>%
     rename_with(~str_replace(., 'column$', 'col')) %>%
-    rename_with(~str_remove(., '^pcr[12]_')
+    rename_with(~str_remove(., '^pcr[12]_'),
                 .cols = c(contains('plate_id'), 
                           contains('plate_col'), 
                           contains('plate_row'))) %>%
