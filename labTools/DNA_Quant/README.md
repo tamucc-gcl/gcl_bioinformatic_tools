@@ -23,6 +23,9 @@ Raw Plate Data → [App 1] → Individual Concentrations → [App 2] → Mean Co
 
 ## Application 1: Quantification Analysis
 
+<details>
+  <summary>Click to expand</summary>
+   
 **URL:** [`http://10.5.146.65/DNA_Quantification/1-quant_plate/`](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
 
 ### Purpose
@@ -51,6 +54,8 @@ Process raw fluorescence data from plate readers and calculate DNA concentration
 
 ### Output
 Individual DNA concentrations for each well/replicate, ready for statistical analysis in App 2.
+
+</details>
 
 ---
 
