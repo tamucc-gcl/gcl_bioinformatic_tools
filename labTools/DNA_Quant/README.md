@@ -21,7 +21,7 @@ Raw Plate Data → [App 1] → Individual Concentrations → [App 2] → Mean Co
 
 ---
 
-## Application 1: Quantification Analysis
+## Application 1: DNA Quantification Analysis
 
 <details>
   <summary>Click to expand</summary>
@@ -59,7 +59,7 @@ Individual DNA concentrations for each well/replicate, ready for statistical ana
 
 ---
 
-## Application 2: Concentration Statistics
+## Application 2: DNA Concentration Statistics
 
 <details>
   <summary>Click to expand</summary>
@@ -130,7 +130,7 @@ variance ~ is_control + (1 | sample_id)
 
 ---
 
-## Application 3: PCR Normalization
+## Application 3: DNA Normalization
 
 <details>
   <summary>Click to expand</summary>
