@@ -21,8 +21,11 @@ Raw Plate Data → [App 1] → Individual Concentrations → [App 2] → Mean Co
 
 ---
 
-## Application 1: Quantification Analysis
+## Application 1: DNA Quantification Analysis
 
+<details>
+  <summary>Click to expand</summary>
+   
 **URL:** [`http://10.5.146.65/DNA_Quantification/1-quant_plate/`](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
 
 ### Purpose
@@ -52,10 +55,15 @@ Process raw fluorescence data from plate readers and calculate DNA concentration
 ### Output
 Individual DNA concentrations for each well/replicate, ready for statistical analysis in App 2.
 
+</details>
+
 ---
 
-## Application 2: Concentration Statistics
+## Application 2: DNA Concentration Statistics
 
+<details>
+  <summary>Click to expand</summary>
+   
 **URL:** [`http://10.5.146.65/DNA_Quantification/2-DNA_concentration/`](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
 
 ### Purpose
@@ -118,9 +126,14 @@ variance ~ is_control + (1 | sample_id)
 - **Excess DNA:** Samples exceeding user-defined threshold above mean
 - **High Variability:** Samples flagged for both uncertainty and excess DNA
 
+</details>
+
 ---
 
-## Application 3: PCR Normalization
+## Application 3: DNA Normalization
+
+<details>
+  <summary>Click to expand</summary>
 
 **URL:** [`http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/`](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/)
 
@@ -180,7 +193,14 @@ A02,standard,std_2,standard,12000
 B01,sample,fish_001,sample,8500
 ```
 
+</details>
+
+---
+
 ## Troubleshooting
+
+<details>
+  <summary>Click to expand</summary>
 
 ### Common Issues
 
@@ -210,7 +230,14 @@ B01,sample,fish_001,sample,8500
 - **Network:** TAMUCC network access or VPN connection
 - **Files:** CSV and Excel file support
 
+</details>
+
+---
+
 ## Server Administration
+
+<details>
+  <summary>Click to expand</summary>
 
 ### Updating Applications
 1. Copy updated Shiny app to server location:
@@ -231,11 +258,23 @@ Server logs are located at: `/var/log/shiny-server/`
 3. **Copy applications** to individual folders in `/srv/shiny-server/`
 4. **Deploy landing page:** Copy `index.html` to `/srv/shiny-server/DNA_Quantification/`
 
+</details>
+
+---
+   
 ## Source Code
 
+
+<details>
+  <summary>Click to expand</summary>
+   
 - **Application 1:** [`code/1 - quantPlate_shiny_2.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/1%20-%20quantPlate_shiny_2.R)
 - **Application 2:** [`code/2 - dna_amount_shiny7.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/2%20-%20dna_amount_shiny7.R)  
 - **Application 3:** [`code/3 - Normalize_DNA_for_PCR.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/3%20-%20Normalize_DNA_for_PCR.R)
+
+</details>
+
+---
 
 ## Support
 
