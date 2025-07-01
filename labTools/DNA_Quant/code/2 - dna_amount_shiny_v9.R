@@ -136,13 +136,37 @@ identify_join_cols <- function(df1, df2){
   })
 }
 
-join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates, quant_type = 'original'){
+join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates, quant_type = 'original', session = NULL){
   tryCatch({
+    # write_rds(map_data, 'map_data.rds')
+    # write_rds(quant_data, 'quant_data.rds')
+    
     join_vars <- identify_join_cols(map_data, quant_data)
     
     out <- inner_join(map_data,
                       quant_data,
                       by = join_vars)
+    
+    # Display informational message to user
+    info_message <- paste0('Detected ', nrow(map_data), ' samples with ', 
+                           nrow(quant_data) / nrow(map_data), ' replicates each.\n',
+                           'Please check that the number of samples and replicates matches what is expected.')
+    
+    if (!is.null(session)) {
+      showNotification(info_message, type = "message", duration = 8, session = session)
+    } else {
+      message(info_message) # fallback for console
+    }
+    
+    # Check for unique sample names
+    if(nrow(map_data) * (nrow(quant_data) / nrow(map_data)) != nrow(out)){
+      warning_message <- 'Check sample names are unique with plate ID, plate row, and plate column'
+      if (!is.null(session)) {
+        showNotification(warning_message, type = "warning", duration = 10, session = session)
+      } else {
+        message(warning_message) # fallback for console
+      }
+    }
     
     if (nrow(out) == 0) {
       stop("No matching records found between plate map and quantification data. Please check that the plate IDs, rows, and columns match between files.")
@@ -154,6 +178,7 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
     stop(paste("Error joining data:", e$message))
   })
 }
+
 
 process_merged_data <- function(df){
   tryCatch({
@@ -503,9 +528,11 @@ server <- function(input, output, session) {
         rename_with(~str_replace(., 'column', 'col'))
       
       # Merge the plate map with the quant data using an inner join
+      # PASS SESSION TO THE FUNCTION
       merged_dna_quants <- join_quants_map(dna_plate_map,
                                            quant_plates,
-                                           input$quant_type) %>%
+                                           input$quant_type,
+                                           session = session) %>%  # Add session parameter
         process_merged_data() 
       
       showNotification(paste("Data loaded successfully!", nrow(merged_dna_quants), "samples loaded from", nrow(input$excel_file), "Excel file(s)."), 

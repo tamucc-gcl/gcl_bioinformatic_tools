@@ -52,12 +52,16 @@ ui <- fluidPage(
       
       conditionalPanel(
         condition = "input.pooling",
+        hr(),
+        h4("Characteristics of Samples Before Normalization"),
+        numericInput("max_vol", "Max Vol to Transfer per Source Well (µL):", value = 90, min = 1),
+        hr(),
         h4("Characteristics of Samples After Normalization"),
         # Hidden input for number of transfers (set to 1)
         div(style = "display: none;",
             numericInput("number_PCR_rxns_pooling", "Number of Transfers per Source Well to Destination Well:", value = 1, min = 1)
         ),
-        numericInput("ul_per_PCR_pooling", "Targeted Final Volume per Source Well in Destination Well (µL):", value = 2, min = 0, step = 0.5),
+        numericInput("ul_per_PCR_pooling", "Targeted Final Volume per Source Well in Destination Well (µL):", value = 0, min = 0, step = 0.5),
         numericInput("DNA_per_PCR_pooling", "Targeted Amount of DNA per Source Well in Destination Well (ng):", value = 10, min = 0, step = 0.1)
       ),
       
@@ -92,7 +96,7 @@ ui <- fluidPage(
           tags$ul(
             tags$li("The amount of DNA in the destination well should be estimated based on the mean DNA concentration of the \"samples\" and the desired goals of the normalization")
           ),
-          tags$li("Download the processed data"),
+          tags$br(),
           tags$li("Evaluate the columns: ", tags$code("transfer_volume"), ", ", tags$code("ul_to_add"), ", ", tags$code("actual_ng_dna"), " with respect to ", tags$code("sample_type")),
           tags$ul(
             tags$li("It is a good sign if the ", tags$code("transfer_volume"), " is less than the max for \"samples\" and the max for \"neg ctrls\""),
@@ -100,7 +104,9 @@ ui <- fluidPage(
             tags$li("It is desirable to maximize the difference between the ", tags$code("actual_ng_dna"), " for \"samples\" and \"neg ctrls\" while ensuring that there is not too much difference among \"samples\""),
             tags$li("The ", tags$code("ul_to_add"), " column indicates how much water to add or remove via centrivapping, but likely holds little meaning for pooling")
           ),
-          tags$li("Adjust settings as necessary and repeat until desired results are achieved")
+          tags$li("Adjust settings as necessary and repeat until desired results are achieved"),
+          tags$br(),
+          tags$li("Download the processed data")
         )
       ),
       
@@ -169,15 +175,23 @@ server <- function(input, output, session){
       if (length(plot_cols) > 0) {
         # Create nice labels for the columns
         choice_labels <- setNames(plot_cols, plot_cols %>%
-          str_replace_all("_", " ") %>%
-          str_to_title() %>%
-          str_replace("Ul", "µL") %>%
-          str_replace("Ng", "ng") %>%
-          str_replace("Pg", "pg"))
+                                    str_replace_all("_", " ") %>%
+                                    str_to_title() %>%
+                                    str_replace("Ul", "µL") %>%
+                                    str_replace("Ng", "ng") %>%
+                                    str_replace("Pg", "pg"))
+        
+        # Preserve current selection if it's still valid, otherwise use first option
+        current_selection <- input$plot_y_axis
+        selected_value <- if (!is.null(current_selection) && current_selection %in% plot_cols) {
+          current_selection
+        } else {
+          plot_cols[1]
+        }
         
         updateSelectInput(session, "plot_y_axis", 
-                         choices = choice_labels,
-                         selected = plot_cols[1])
+                          choices = choice_labels,
+                          selected = selected_value)
       }
     }
   })

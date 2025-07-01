@@ -443,6 +443,94 @@ parse_outlier <- function(x){
   numerator / denominator
 }
 
+parse_number_range <- function(input_string) {
+  if (is.null(input_string) || length(input_string) == 0 || nchar(trimws(input_string)) == 0) {
+    return(integer(0))
+  }
+  
+  # Start with trimmed input
+  cleaned_input <- trimws(input_string)
+  
+  # Step-by-step cleaning to handle edge cases
+  # Remove trailing separators (commas, dashes, spaces)
+  while (grepl("[,\\s-]$", cleaned_input)) {
+    cleaned_input <- gsub("[,\\s-]+$", "", cleaned_input)
+  }
+  
+  # Remove leading separators  
+  while (grepl("^[,\\s-]", cleaned_input)) {
+    cleaned_input <- gsub("^[,\\s-]+", "", cleaned_input)
+  }
+  
+  # If empty after cleaning, return empty vector
+  cleaned_input <- trimws(cleaned_input)
+  if (nchar(cleaned_input) == 0) {
+    return(integer(0))
+  }
+  
+  # Split by comma first, then clean each part
+  parts <- unlist(strsplit(cleaned_input, ","))
+  
+  # Clean each part individually
+  parts <- sapply(parts, function(p) {
+    p <- trimws(p)
+    # Remove trailing dashes from individual parts
+    p <- gsub("-+$", "", p)
+    return(trimws(p))
+  })
+  
+  # Remove empty parts
+  parts <- parts[parts != "" & !is.na(parts)]
+  
+  if (length(parts) == 0) {
+    return(integer(0))
+  }
+  
+  # Process each part to extract numbers
+  result <- c()
+  for (part in parts) {
+    part <- trimws(part)
+    if (nchar(part) == 0) next
+    
+    if (grepl("-", part) && !grepl("^-", part) && !grepl("-$", part)) {
+      # Handle range like "48-52" (but not "-48" or "48-")
+      range_parts <- unlist(strsplit(part, "-"))
+      range_parts <- trimws(range_parts)
+      range_parts <- range_parts[range_parts != ""]
+      
+      if (length(range_parts) == 2) {
+        start_num <- suppressWarnings(as.numeric(range_parts[1]))
+        end_num <- suppressWarnings(as.numeric(range_parts[2]))
+        
+        if (!is.na(start_num) && !is.na(end_num) && start_num <= end_num) {
+          result <- c(result, seq(start_num, end_num))
+          next
+        }
+      }
+      
+      # If range parsing failed, try to get the first valid number
+      for (rp in range_parts) {
+        num_val <- suppressWarnings(as.numeric(rp))
+        if (!is.na(num_val)) {
+          result <- c(result, num_val)
+          break
+        }
+      }
+    } else {
+      # Handle single number
+      num_val <- suppressWarnings(as.numeric(part))
+      if (!is.na(num_val)) {
+        result <- c(result, num_val)
+      }
+    }
+  }
+  
+  # Remove duplicates and convert to integer
+  result <- unique(result)
+  result <- result[!is.na(result)]
+  return(as.integer(result))
+}
+
 #### UI ####
 ui <- fluidPage(
   waiter::useWaiter(),
@@ -708,8 +796,10 @@ server <- function(input, output, session) {
       if (length(std_rows) > 0) {
         default_std <- if (min(std_rows) == max(std_rows)) {
           as.character(min(std_rows))
-        } else {
+        } else if ((max(std_rows) - min(std_rows)) == (length(std_rows) - 1)) {
           paste0(min(std_rows), "-", max(std_rows))
+        } else {
+          stringr::str_c(std_rows, collapse = ', ')
         }
         updateTextInput(session, "selected_standards", value = default_std)
       }
@@ -735,7 +825,11 @@ server <- function(input, output, session) {
   
   output$data_table <- renderDT({
     req(data_all())
-    datatable(data_all(), options = list(pageLength = 10))
+    data_all() %>%
+      mutate(Row = row_number(),
+             .before = 1) %>%
+      datatable(options = list(pageLength = 10),
+                rownames = FALSE)
   })
   
   output$data_status <- renderUI({
@@ -781,49 +875,54 @@ server <- function(input, output, session) {
   standards_data <- reactive({
     req(data_all(), input$selected_standards)
     req(input$x_var != "", input$y_var != "")
-    selected_rows <- unlist(strsplit(input$selected_standards, ","))
-    selected_rows <- trimws(selected_rows)
-    expanded_rows <- unlist(lapply(selected_rows, function(x) {
-      if (grepl("-", x)) {
-        range_vals <- as.numeric(unlist(strsplit(x, "-")))
-        if(length(range_vals)==2) return(seq(range_vals[1], range_vals[2]))
-      } else return(as.numeric(x))
-    }))
-    expanded_rows <- expanded_rows[expanded_rows %in% seq_len(nrow(data_all()))]
+    
+    # Parse selected standards
+    expanded_rows <- parse_number_range(input$selected_standards)
+    
+    # Check which parsed numbers are actually valid
+    valid_mask <- expanded_rows %in% seq_len(nrow(data_all()))
+    
+    # Filter to valid row indices
+    expanded_rows <- expanded_rows[valid_mask]
+    
+    # If no valid rows, return empty data frame with correct structure
+    if (length(expanded_rows) == 0) {
+      
+      # Show what rows DO exist that contain standards
+      if (!is.null(data_all()) && nrow(data_all()) > 0) {
+        std_rows <- which(tolower(data_all()$plate_id) == "standard")
+        
+        if (length(std_rows) > 0) {
+          showNotification(
+            paste("Row", paste(expanded_rows[!valid_mask], collapse = ", "), 
+                  "does not exist in your dataset. Available standard rows are:", 
+                  paste(std_rows, collapse = ", ")), 
+            type = "warning", duration = 10
+          )
+        }
+      }
+      
+      empty_df <- data.frame(
+        standard_index = integer(0),
+        stringsAsFactors = FALSE
+      )
+      empty_df[[input$x_var]] <- numeric(0)
+      empty_df[[input$y_var]] <- numeric(0)
+      empty_df$included_in_model <- character(0)
+      return(empty_df)
+    }
+    
     df <- data_all()[expanded_rows, , drop = FALSE]
     
-    drop_indices <- c()
-    if (!is.null(input$drop_standards) && nchar(input$drop_standards) > 0) {
-      drop_rows <- unlist(strsplit(input$drop_standards, ","))
-      drop_rows <- trimws(drop_rows)
-      drop_indices <- unlist(lapply(drop_rows, function(x) {
-        if (grepl("-", x)) {
-          range_vals <- as.numeric(unlist(strsplit(x, "-")))
-          if(length(range_vals)==2) return(seq(range_vals[1], range_vals[2]))
-        } else return(as.numeric(x))
-      }))
-      drop_indices <- drop_indices[drop_indices %in% seq_len(nrow(df))]
-    }
+    # Parse standards to drop
+    drop_indices <- parse_number_range(input$drop_standards)
+    drop_indices <- drop_indices[drop_indices %in% seq_len(nrow(df))]
     
     df <- df %>%
       mutate(standard_index = row_number(),
              included_in_model = if_else(standard_index %in% drop_indices, "No", "Yes")
       ) %>%
       select(standard_index, all_of(c(input$x_var, input$y_var)), included_in_model)
-    
-    if(nrow(df) == 0) {
-      showNotification("No valid standards selected after filtering. Check your input.", type = "error")
-      # Create an empty data frame with the expected columns:
-      empty_df <- data.frame(
-        standard_index = integer(0),
-        stringsAsFactors = FALSE
-      )
-      # Add the x and y variable columns with numeric type.
-      empty_df[[ input$x_var ]] <- numeric(0)
-      empty_df[[ input$y_var ]] <- numeric(0)
-      empty_df$included_in_model <- character(0)
-      return(empty_df)
-    }
     
     return(df)
   })
@@ -974,79 +1073,171 @@ server <- function(input, output, session) {
   model_metrics <- reactive({
     req(model_fit(), standards_data(), 
         input$x_var != '', input$y_var != '')
+    
+    # write_rds(model_fit(), 'model_fit.rds')
+    # write_rds(standards_data(), 'standards_data.rds')
+    # write_rds(input, 'input.rds')
+    
     df_std <- standards_data()
     req(nrow(df_std) > 0)
     
+    # Check if model_fit() returned any models
+    models <- model_fit()
+    if (length(models) == 0) {
+      # Return empty data frame with correct structure
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
     
     df <- df_std %>% filter(included_in_model == "Yes")
     n <- nrow(df)
-    metrics <- lapply(names(model_fit()), function(model_name) {
-      model <- model_fit()[[model_name]]$fit
+    
+    # Only process models that actually exist and have valid fits
+    valid_models <- names(models)[sapply(models, function(x) !is.null(x$fit))]
+    
+    if (length(valid_models) == 0) {
+      # Return empty data frame if no valid models
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
+    
+    metrics <- lapply(valid_models, function(model_name) {
+      model <- models[[model_name]]$fit
       if (is.null(model)) return(NULL)
       
-      summ <- summary(model)
-      r2 <- summ$r.squared
-      adj_r2 <- summ$adj.r.squared
-      
-      aic_val <- AIC(model)
-      bic_val <- BIC(model)
-
-      # message("DEBUG: Model: ", model_name)
-      # message("DEBUG: AIC: ", paste(round(aic_val, 3), collapse = ", "))
-      
-      log_y_flag <- input[[paste0("log_y_", model_name)]]
-      observed <- df[[input$y_var]]
-      
-      # Add the Jacobian adjustment for models with log10 transformed y.
-      # https://stats.stackexchange.com/questions/61332/comparing-aic-of-a-model-and-its-log-transformed-version
-      if (log_y_flag) {
-        adjustment <- sum(2 * log(observed)) / log(10)
-        aic_val <- aic_val + adjustment
+      tryCatch({
+        summ <- summary(model)
+        r2 <- summ$r.squared
+        adj_r2 <- summ$adj.r.squared
         
-        # message("DEBUG: Adjustment: ", paste(round(adjustment, 3), collapse = ", "))
-        # message("DEBUG: AIC: ", paste(round(aic_val, 3), collapse = ", "))
-      }
-
-      
-      
-      k <- length(coef(model))
-      aicc_val <- aic_val + (2 * k * (k + 1)) / (n - k - 1)
-      
-      fitted_vals <- if (log_y_flag) { 10^(fitted(model)) } else { fitted(model) }
-      rmse_val <- sqrt(mean((observed - fitted_vals)^2))
-      rse_val <- summary(model)$sigma
-      loocv_val <- loocv(model)
-      
-      # Debug output: print observed and fitted values to the terminal.
-      # message("DEBUG: Model: ", model_name)
-      # message("DEBUG: X values: ", paste(round(df[[input$x_var]], 3), collapse = ", "))
-      # message("DEBUG: Observed values: ", paste(round(observed, 3), collapse = ", "))
-      # message("DEBUG: Fitted values: ", paste(round(fitted_vals, 3), collapse = ", "))
-      # message("DEBUG: AIC: ", paste(round(fitted_vals, 3), collapse = ", "))
-      
-      data.frame(Model = toupper(model_name),
-                 R2 = round(r2, 4),
-                 Adj_R2 = round(adj_r2, 4),
-                 AIC = round(aic_val, 4),
-                 AICc = round(aicc_val, 4),
-                 BIC = round(bic_val, 4),
-                 RMSE = round(rmse_val, 4),
-                 RSE = round(rse_val, 4),
-                 LOOCV = round(loocv_val, 4),
-                 stringsAsFactors = FALSE)
+        aic_val <- AIC(model)
+        bic_val <- BIC(model)
+        
+        log_y_flag <- input[[paste0("log_y_", model_name)]]
+        observed <- df[[input$y_var]]
+        
+        # Add the Jacobian adjustment for models with log10 transformed y.
+        # https://stats.stackexchange.com/questions/61332/comparing-aic-of-a-model-and-its-log-transformed-version
+        if (log_y_flag) {
+          adjustment <- sum(2 * log(observed)) / log(10)
+          aic_val <- aic_val + adjustment
+        }
+        
+        k <- length(coef(model))
+        aicc_val <- aic_val + (2 * k * (k + 1)) / (n - k - 1)
+        
+        fitted_vals <- if (log_y_flag) { 10^(fitted(model)) } else { fitted(model) }
+        rmse_val <- sqrt(mean((observed - fitted_vals)^2))
+        rse_val <- summary(model)$sigma
+        loocv_val <- loocv(model)
+        
+        data.frame(Model = toupper(model_name),
+                   R2 = round(r2, 4),
+                   Adj_R2 = round(adj_r2, 4),
+                   AIC = round(aic_val, 4),
+                   AICc = round(aicc_val, 4),
+                   BIC = round(bic_val, 4),
+                   RMSE = round(rmse_val, 4),
+                   RSE = round(rse_val, 4),
+                   LOOCV = round(loocv_val, 4),
+                   stringsAsFactors = FALSE)
+      }, error = function(e) {
+        # If any error occurs in metric calculation, return NULL
+        showNotification(paste("Error calculating metrics for", model_name, ":", e$message), 
+                         type = "warning", duration = 3)
+        return(NULL)
+      })
     })
-    do.call(rbind, metrics) %>%
-      select(-R2, -BIC, -AIC) %>%
-      # mutate(aicc_rank = dense_rank(AICc),
-      #        loocv_rank = dense_rank(LOOCV),
-      #        rmse_rank = dense_rank(RMSE),
-      #        rse_rank = dense_rank(RSE)) %>%
-      mutate(RANK = (dense_rank(AICc) +
-               dense_rank(LOOCV) +
-               dense_rank(RMSE) +
-               dense_rank(RSE))) %>%
-      mutate(RANK = dense_rank(RANK)) %>%
-      identity()
+    
+    # Remove NULL entries
+    metrics <- metrics[!sapply(metrics, is.null)]
+    
+    if (length(metrics) == 0) {
+      # Return empty data frame if no valid metrics
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
+    
+    # Safely combine metrics
+    combined_metrics <- tryCatch({
+      do.call(rbind, metrics)
+    }, error = function(e) {
+      showNotification(paste("Error combining model metrics:", e$message), 
+                       type = "error", duration = 5)
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    })
+    
+    if (is.null(combined_metrics) || nrow(combined_metrics) == 0) {
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
+    
+    # Safely process the combined metrics
+    result <- tryCatch({
+      combined_metrics %>%
+        select(-R2, -BIC, -AIC) %>%
+        mutate(RANK = (dense_rank(AICc) +
+                         dense_rank(LOOCV) +
+                         dense_rank(RMSE) +
+                         dense_rank(RSE))) %>%
+        mutate(RANK = dense_rank(RANK))
+    }, error = function(e) {
+      showNotification(paste("Error processing model metrics:", e$message), 
+                       type = "error", duration = 5)
+      return(data.frame(
+        Model = character(0),
+        Adj_R2 = numeric(0),
+        AICc = numeric(0),
+        RMSE = numeric(0),
+        RSE = numeric(0),
+        LOOCV = numeric(0),
+        RANK = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    })
+    
+    return(result)
   })
   
   output$model_comp_table <- renderDT({
@@ -1288,9 +1479,13 @@ server <- function(input, output, session) {
       
       if (input$overlay_samples) {
         sample_df <- results[[model_name]]$sample
+        less_lod <- mean(pull(sample_df, !!sym(x_var)) < range_rfu[1])
+        more_lod <- mean(pull(sample_df, !!sym(x_var)) > range_rfu[2])
         p <- p + geom_point(data = sample_df,
                             aes(x = !!sym(x_var), y = predicted),
-                            shape = 16, color = "black", size = 2, alpha = 0.5)
+                            shape = 16, color = "black", size = 2, alpha = 0.5) +
+          labs(caption = stringr::str_c(scales::percent(less_lod), ' samples below LoD\n',
+                                        scales::percent(more_lod), ' samples above LoD'))
       }
       
       if (log_x_plot) {
@@ -1324,6 +1519,8 @@ server <- function(input, output, session) {
     if(log_x_plot){
       updated_x_range <- 10^updated_x_range
     }
+    
+    
     
     combined_plot <- wrap_plots(plots, ncol = 2, 
                                 guides = 'collect', 
