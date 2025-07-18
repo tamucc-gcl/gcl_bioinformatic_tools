@@ -179,7 +179,6 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
   })
 }
 
-
 process_merged_data <- function(df){
   tryCatch({
     the_cols <- colnames(df)
@@ -188,7 +187,7 @@ process_merged_data <- function(df){
     if(!any(str_detect(the_cols, 'sample_type'))){
       df <- mutate(df, sample_type = 'sample')
     }
-    if(any(str_detect(the_cols, 'sample_id'))){
+    if(any(str_detect(the_cols, '^sample_id$'))){
       df <- rename(df, sample_id_store = 'sample_id')
     }
     df %>%
@@ -526,6 +525,9 @@ server <- function(input, output, session) {
       # Read and combine the CSV files
       quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE)) %>%
         rename_with(~str_replace(., 'column', 'col'))
+      
+      # write_csv(dna_plate_map, 'dna_plate_map.csv')
+      # write_csv(quant_plates, 'quant_plates.csv')
       
       # Merge the plate map with the quant data using an inner join
       # PASS SESSION TO THE FUNCTION
