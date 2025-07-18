@@ -200,6 +200,7 @@ process_merged_data <- function(df){
 }
 
 #### UI ####
+#### UI ####
 ui <- fluidPage(
   waiter::useWaiter(),
   
@@ -233,6 +234,48 @@ ui <- fluidPage(
       padding: 15px;
       margin-bottom: 20px;
     }
+    
+    /* Instructions styling */
+    .instructions-box {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .instructions-box h4 {
+      margin-top: 0;
+      color: #495057;
+    }
+    
+    /* Mobile/smaller screens - instructions above sidebar */
+    @media (max-width: 1199px) {
+      .instructions-mobile {
+        display: block;
+        order: -1; /* Ensures it appears first */
+      }
+      
+      .instructions-desktop {
+        display: none;
+      }
+      
+      .tab-content-mobile {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    
+    /* Desktop/larger screens - instructions in main panel */
+    @media (min-width: 1200px) {
+      .instructions-mobile {
+        display: none;
+      }
+      
+      .instructions-desktop {
+        display: block;
+      }
+    }
   "))),
   
   titlePanel("Step 2: Calculate Mean DNA Concentration"),
@@ -257,168 +300,214 @@ ui <- fluidPage(
   
   tabsetPanel(
     tabPanel("Data Input",
-             sidebarLayout(
-               sidebarPanel(
-                 fileInput("excel_file", "Upload Source DNA Plate Map File(s)", 
-                           accept = c(".xlsx", ".xls"), multiple = TRUE),
-                 selectInput("sheet_name", "Excel Sheet Name", choices = NULL),
-                 fileInput("csv_files", "Upload Modeled DNA Concentration Files (select all)", 
-                           multiple = TRUE, accept = ".csv"),
-                 selectInput("quant_type", "Quant Stage", 
-                             choices = c('Original' = 'original', 
-                                         "Requantification" = 'requant'), 
-                             selected = 'original'),
-                 actionButton("load_data", "Load Data"),
-                 uiOutput("data_status")
-               ),
-               mainPanel(
-                 div(
-                   style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                   h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                   tags$ul(
-                     tags$li("Upload the DNA Plate Map File (not the quant plate map)"),
-                     tags$li("Be sure the correct sheet within the excel file is selected"),
-                     tags$li("Upload the DNA concentrations output by Step 1: Model DNA Concentrations"),
-                     tags$li("Select ", tags$code("Load Data")),
-                     tags$li("Go to ", tags$code("Filter Data"), " Tab to review and filter your data"),
-                     tags$li("Then go to ", tags$code("Calculate Mean DNA Concentrations"), " Tab")
-                   )
+             div(class = "tab-content-mobile",
+                 # Mobile instructions (appears above controls on smaller screens)
+                 div(class = "instructions-mobile instructions-box",
+                     h4("Instructions:"),
+                     tags$ul(
+                       tags$li("Upload the DNA Plate Map File (not the quant plate map)"),
+                       tags$li("Be sure the correct sheet within the excel file is selected"),
+                       tags$li("Upload the DNA concentrations output by Step 1: Model DNA Concentrations"),
+                       tags$li("Select ", tags$code("Load Data")),
+                       tags$li("Go to ", tags$code("Filter Data"), " Tab to review and filter your data"),
+                       tags$li("Then go to ", tags$code("Calculate Mean DNA Concentrations"), " Tab")
+                     )
                  ),
-                 h4("Merged Data"),
-                 DT::DTOutput("merged_table")
-               )
+                 
+                 sidebarLayout(
+                   sidebarPanel(
+                     fileInput("excel_file", "Upload Source DNA Plate Map File(s)", 
+                               accept = c(".xlsx", ".xls"), multiple = TRUE),
+                     selectInput("sheet_name", "Excel Sheet Name", choices = NULL),
+                     fileInput("csv_files", "Upload Modeled DNA Concentration Files (select all)", 
+                               multiple = TRUE, accept = ".csv"),
+                     selectInput("quant_type", "Quant Stage", 
+                                 choices = c('Original' = 'original', 
+                                             "Requantification" = 'requant'), 
+                                 selected = 'original'),
+                     actionButton("load_data", "Load Data"),
+                     uiOutput("data_status")
+                   ),
+                   mainPanel(
+                     # Desktop instructions (appears in main panel on larger screens)
+                     div(class = "instructions-desktop instructions-box",
+                         h4("Instructions:"),
+                         tags$ul(
+                           tags$li("Upload the DNA Plate Map File (not the quant plate map)"),
+                           tags$li("Be sure the correct sheet within the excel file is selected"),
+                           tags$li("Upload the DNA concentrations output by Step 1: Model DNA Concentrations"),
+                           tags$li("Select ", tags$code("Load Data")),
+                           tags$li("Go to ", tags$code("Filter Data"), " Tab to review and filter your data"),
+                           tags$li("Then go to ", tags$code("Calculate Mean DNA Concentrations"), " Tab")
+                         )
+                     ),
+                     h4("Merged Data"),
+                     DT::DTOutput("merged_table")
+                   )
+                 )
              )
     ),
     
-    # NEW TAB: Filter Data
+    # Filter Data Tab
     tabPanel("Filter Data",
-             sidebarLayout(
-               sidebarPanel(
-                 h4("Data Filtering Controls"),
-                 
-                 # Dynamic filter controls will be generated here
-                 uiOutput("filter_controls"),
-                 
-                 br(),
-                 actionButton("reset_filters", "Reset All Filters", 
-                              class = "btn-warning"),
-                 br(), br(),
-                 
-                 # Filter summary
-                 div(
-                   style = "background-color: #e9ecef; border-radius: 5px; padding: 10px;",
-                   h5("Filter Summary:"),
-                   verbatimTextOutput("filter_summary")
-                 )
-               ),
-               mainPanel(
-                 div(
-                   style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                   h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                   tags$ul(
-                     tags$li("Review your merged data in the table below"),
-                     tags$li("Use the filter controls on the left to filter your data"),
-                     tags$li("The table will update automatically as you apply filters"),
-                     tags$li("Only the filtered data will be used for model fitting"),
-                     tags$li("Proceed to ", tags$code("Calculate Mean DNA Concentrations"), " when ready")
-                   )
+             div(class = "tab-content-mobile",
+                 # Mobile instructions
+                 div(class = "instructions-mobile instructions-box",
+                     h4("Instructions:"),
+                     tags$ul(
+                       tags$li("Review your merged data in the table below"),
+                       tags$li("Use the filter controls on the left to filter your data"),
+                       tags$li("The table will update automatically as you apply filters"),
+                       tags$li("Only the filtered data will be used for model fitting"),
+                       tags$li("Proceed to ", tags$code("Calculate Mean DNA Concentrations"), " when ready")
+                     )
                  ),
                  
-                 h4("Filtered Data"),
-                 p("This is the data that will be used for model fitting:"),
-                 DT::DTOutput("filtered_table")
-               )
+                 sidebarLayout(
+                   sidebarPanel(
+                     h4("Data Filtering Controls"),
+                     
+                     # Dynamic filter controls will be generated here
+                     uiOutput("filter_controls"),
+                     
+                     br(),
+                     actionButton("reset_filters", "Reset All Filters", 
+                                  class = "btn-warning"),
+                     br(), br(),
+                     
+                     # Filter summary
+                     div(
+                       style = "background-color: #e9ecef; border-radius: 5px; padding: 10px;",
+                       h5("Filter Summary:"),
+                       verbatimTextOutput("filter_summary")
+                     )
+                   ),
+                   mainPanel(
+                     # Desktop instructions
+                     div(class = "instructions-desktop instructions-box",
+                         h4("Instructions:"),
+                         tags$ul(
+                           tags$li("Review your merged data in the table below"),
+                           tags$li("Use the filter controls on the left to filter your data"),
+                           tags$li("The table will update automatically as you apply filters"),
+                           tags$li("Only the filtered data will be used for model fitting"),
+                           tags$li("Proceed to ", tags$code("Calculate Mean DNA Concentrations"), " when ready")
+                         )
+                     ),
+                     
+                     h4("Filtered Data"),
+                     p("This is the data that will be used for model fitting:"),
+                     DT::DTOutput("filtered_table")
+                   )
+                 )
              )
     ),
     
     tabPanel("Calculate Mean DNA Concentrations",
-             sidebarLayout(
-               sidebarPanel(
-                 # DNA Concentration input
-                 selectInput("y_var", "Select DNA Concentration", choices = NULL),
-                 
-                 # Other controls
-                 actionButton("fit_model", "Fit Model"),
-                 
-                 # Download control
-                 actionButton("generate_zip", "Generate Zip File"),
-                 uiOutput("download_zip_ui"),
-                 br(), br(),
-                 checkboxInput("log_transform", "Plot Log10 Transform", value = TRUE), 
-                 
-                 # All your existing collapsible panels remain the same...
-                 bsCollapse(
-                   bsCollapsePanel("Flag Settings",
-                                   numericInput("min_volume", "Minimum Pipettable Volume (μL)", value = 0.75, min = 0),
-                                   numericInput("max_low_volume", "Max Vol (μL) to Pipette", value = 4, min = 0),
-                                   numericInput("target_dna", "Target Amount of DNA to Transfer (ng)", value = 2, min = 0),
-                                   numericInput("mean_multiple", "Excess DNA is 'X' times more than the upper 95% CI", value = 2, min = 0),
-                                   style = "primary"
-                   ),
-                   open = "Flag Settings"
-                 ),
-                 
-                 bsCollapse(
-                   bsCollapsePanel("Model Settings", 
-                                   numericInput("num_chains", "Number of Chains", value = 4, min = 1, step = 1),
-                                   numericInput("iter_sampling", "Number of Sampling Iterations", value = 2000, min = 1, step = 1),
-                                   numericInput("iter_warmup", "Number of Warmup Iterations", value = 1000, min = 1, step = 1),
-                                   numericInput("thin", "Thinning Interval", value = 10, min = 1, step = 1),
-                                   style = "primary"
-                   ),
-                   open = NULL
-                 ),
-                 
-                 bsCollapse(
-                   bsCollapsePanel("Priors Settings",
-                                   h4("Main Model Priors"),
-                                   fluidRow(
-                                     column(6, numericInput("intercept_prior_mean", "Intercept Prior Mean", value = 1.5)),
-                                     column(6, numericInput("intercept_prior_sd", "Intercept Prior SD", value = 2.5))
-                                   ),
-                                   fluidRow(
-                                     column(6, numericInput("beta_prior_mean", "Beta Prior Mean", value = 0)),
-                                     column(6, numericInput("beta_prior_sd", "Beta Prior SD", value = 2.5))
-                                   ),
-                                   fluidRow(
-                                     column(6, numericInput("var_prior_param1", "Variance Prior Parameter 1", value = 2)),
-                                     column(6, numericInput("var_prior_param2", "Variance Prior Parameter 2", value = 1))
-                                   ),
-                                   h4("Shape Priors"),
-                                   fluidRow(
-                                     column(6, numericInput("interceptShape_prior_mean", "Intercept Shape Prior Mean", value = 0)),
-                                     column(6, numericInput("interceptShape_prior_sd", "Intercept Shape Prior SD", value = 2.5))
-                                   ),
-                                   fluidRow(
-                                     column(6, numericInput("betaShape_prior_mean", "Beta Shape Prior Mean", value = 0)),
-                                     column(6, numericInput("betaShape_prior_sd", "Beta Shape Prior SD", value = 2.5))
-                                   ),
-                                   fluidRow(
-                                     column(6, numericInput("varShape_prior_param1", "Variance Shape Prior Parameter 1", value = 2)),
-                                     column(6, numericInput("varShape_prior_param2", "Variance Shape Prior Parameter 2", value = 1))
-                                   ),
-                                   style = "primary"
-                   ),
-                   open = NULL
-                 )
-               ),
-               mainPanel(
-                 div(
-                   style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                   h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                   tags$ul(
-                     tags$li("Select ", tags$code("Fit Model"), " (can take a minute)"),
-                     tags$li("Evaluate the resulting plot"),
-                     tags$li("Adjust settings as necessary:"),
+             div(class = "tab-content-mobile",
+                 # Mobile instructions
+                 div(class = "instructions-mobile instructions-box",
+                     h4("Instructions:"),
                      tags$ul(
-                       tags$li("Excess DNA: changes which samples are flagged for dilution"),
-                       tags$li("Other flag settings can be adjusted based on your experimental needs")
-                     ),
-                     tags$li("Select ", tags$code("Generate Zip File"), " then ", tags$code("Download Zip File"))
-                   )
+                       tags$li("Select ", tags$code("Fit Model"), " (can take a minute)"),
+                       tags$li("Evaluate the resulting plot"),
+                       tags$li("Adjust settings as necessary:"),
+                       tags$ul(
+                         tags$li("Excess DNA: changes which samples are flagged for dilution"),
+                         tags$li("Other flag settings can be adjusted based on your experimental needs")
+                       ),
+                       tags$li("Select ", tags$code("Generate Zip File"), " then ", tags$code("Download Zip File"))
+                     )
                  ),
-                 plotOutput("dna_plot")
-               )
+                 
+                 sidebarLayout(
+                   sidebarPanel(
+                     # DNA Concentration input
+                     selectInput("y_var", "Select DNA Concentration", choices = NULL),
+                     
+                     # Other controls
+                     actionButton("fit_model", "Fit Model"),
+                     
+                     # Download control
+                     actionButton("generate_zip", "Generate Zip File"),
+                     uiOutput("download_zip_ui"),
+                     br(), br(),
+                     checkboxInput("log_transform", "Plot Log10 Transform", value = TRUE), 
+                     
+                     # All your existing collapsible panels remain the same...
+                     bsCollapse(
+                       bsCollapsePanel("Flag Settings",
+                                       numericInput("min_volume", "Minimum Pipettable Volume (μL)", value = 0.75, min = 0),
+                                       numericInput("max_low_volume", "Max Vol (μL) to Pipette", value = 4, min = 0),
+                                       numericInput("target_dna", "Target Amount of DNA to Transfer (ng)", value = 2, min = 0),
+                                       numericInput("mean_multiple", "Excess DNA is 'X' times more than the upper 95% CI", value = 2, min = 0),
+                                       style = "primary"
+                       ),
+                       open = "Flag Settings"
+                     ),
+                     
+                     bsCollapse(
+                       bsCollapsePanel("Model Settings", 
+                                       numericInput("num_chains", "Number of Chains", value = 4, min = 1, step = 1),
+                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 2000, min = 1, step = 1),
+                                       numericInput("iter_warmup", "Number of Warmup Iterations", value = 1000, min = 1, step = 1),
+                                       numericInput("thin", "Thinning Interval", value = 10, min = 1, step = 1),
+                                       style = "primary"
+                       ),
+                       open = NULL
+                     ),
+                     
+                     bsCollapse(
+                       bsCollapsePanel("Priors Settings",
+                                       h4("Main Model Priors"),
+                                       fluidRow(
+                                         column(6, numericInput("intercept_prior_mean", "Intercept Prior Mean", value = 1.5)),
+                                         column(6, numericInput("intercept_prior_sd", "Intercept Prior SD", value = 2.5))
+                                       ),
+                                       fluidRow(
+                                         column(6, numericInput("beta_prior_mean", "Beta Prior Mean", value = 0)),
+                                         column(6, numericInput("beta_prior_sd", "Beta Prior SD", value = 2.5))
+                                       ),
+                                       fluidRow(
+                                         column(6, numericInput("var_prior_param1", "Variance Prior Parameter 1", value = 2)),
+                                         column(6, numericInput("var_prior_param2", "Variance Prior Parameter 2", value = 1))
+                                       ),
+                                       h4("Shape Priors"),
+                                       fluidRow(
+                                         column(6, numericInput("interceptShape_prior_mean", "Intercept Shape Prior Mean", value = 0)),
+                                         column(6, numericInput("interceptShape_prior_sd", "Intercept Shape Prior SD", value = 2.5))
+                                       ),
+                                       fluidRow(
+                                         column(6, numericInput("betaShape_prior_mean", "Beta Shape Prior Mean", value = 0)),
+                                         column(6, numericInput("betaShape_prior_sd", "Beta Shape Prior SD", value = 2.5))
+                                       ),
+                                       fluidRow(
+                                         column(6, numericInput("varShape_prior_param1", "Variance Shape Prior Parameter 1", value = 2)),
+                                         column(6, numericInput("varShape_prior_param2", "Variance Shape Prior Parameter 2", value = 1))
+                                       ),
+                                       style = "primary"
+                       ),
+                       open = NULL
+                     )
+                   ),
+                   mainPanel(
+                     # Desktop instructions
+                     div(class = "instructions-desktop instructions-box",
+                         h4("Instructions:"),
+                         tags$ul(
+                           tags$li("Select ", tags$code("Fit Model"), " (can take a minute)"),
+                           tags$li("Evaluate the resulting plot"),
+                           tags$li("Adjust settings as necessary:"),
+                           tags$ul(
+                             tags$li("Excess DNA: changes which samples are flagged for dilution"),
+                             tags$li("Other flag settings can be adjusted based on your experimental needs")
+                           ),
+                           tags$li("Select ", tags$code("Generate Zip File"), " then ", tags$code("Download Zip File"))
+                         )
+                     ),
+                     plotOutput("dna_plot")
+                   )
+                 )
              )
     )
   )

@@ -6,6 +6,50 @@ library(stringr)   # you only need stringr, not the full tidyverse
 library(ggplot2)
 
 ui <- fluidPage(
+  tags$head(tags$style(HTML("
+    /* Instructions styling */
+    .instructions-box {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .instructions-box h4 {
+      margin-top: 0;
+      color: #495057;
+    }
+    
+    /* Mobile/smaller screens - instructions above sidebar */
+    @media (max-width: 1199px) {
+      .instructions-mobile {
+        display: block;
+        order: -1; /* Ensures it appears first */
+      }
+      
+      .instructions-desktop {
+        display: none;
+      }
+      
+      .tab-content-mobile {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    
+    /* Desktop/larger screens - instructions in main panel */
+    @media (min-width: 1200px) {
+      .instructions-mobile {
+        display: none;
+      }
+      
+      .instructions-desktop {
+        display: block;
+      }
+    }
+  "))),
+  
   titlePanel("Step 3: DNA Normalization Calculator"),
   
   # Custom navigation header that appears above content
@@ -28,111 +72,143 @@ ui <- fluidPage(
     )
   ),
   
-  sidebarLayout(
-    sidebarPanel(
-      fileInput("sample_files", "Upload Sample-concentration CSV From Step 2", accept = ".csv"),
-      
-      checkboxInput("pooling", "Pooling", value = FALSE),
-      
-      # Conditional panels based on pooling checkbox
-      conditionalPanel(
-        condition = "!input.pooling",
-        # Section break
-        hr(),
-        h4("Characteristics of Samples Before Normalization"),
-        numericInput("max_vol", "Max Vol to Transfer per Source Well (µL):", value = 90, min = 1),
-        
-        # Section break
-        hr(),
-        h4("Characteristics of Samples After Normalization"),
-        numericInput("number_PCR_rxns", "Number of Reactions Needed per Destination Well:", value = 36, min = 1),
-        numericInput("ul_per_PCR", "Targeted Final Volume per Rxn in Destination Well (µL):", value = 2, min = 0, step = 0.5),
-        numericInput("DNA_per_PCR", "DNA per Rxn in Destination Well (ng):", value = 10, min = 0, step = 0.1)
+  div(class = "tab-content-mobile",
+      # Mobile instructions (appears above controls on smaller screens)
+      div(class = "instructions-mobile instructions-box",
+          h4("Instructions:"),
+          tags$ul(
+            tags$li("Load the sample concentration file(s) from step 2."),
+            tags$ul(
+              tags$li("You may have more than one file if some samples were diluted and requanted")
+            ),
+            tags$li("If you are using this to calculate volumes for pooling, then check the box"),
+            tags$li("Add the max volume to transfer per source well in your source plate"),
+            tags$ul(
+              tags$li("Underestimate the volume")
+            ),
+            tags$li("Fill in the remaining values which describe the characteristics of the sample after it is normalized"),
+            tags$ul(
+              tags$li("The amount of DNA in the destination well should be estimated based on the mean DNA concentration of the \"samples\" and the desired goals of the normalization")
+            ),
+            tags$br(),
+            tags$li("Evaluate the columns: ", tags$code("transfer_volume"), ", ", tags$code("ul_to_add"), ", ", tags$code("actual_ng_dna"), " with respect to ", tags$code("sample_type")),
+            tags$ul(
+              tags$li("It is a good sign if the ", tags$code("transfer_volume"), " is less than the max for \"samples\" and the max for \"neg ctrls\""),
+              tags$li("It is a good sign if the ", tags$code("actual_ng_dna"), " is equal to the target for \"samples\" and less than the target for \"neg ctrls\""),
+              tags$li("It is desirable to maximize the difference between the ", tags$code("actual_ng_dna"), " for \"samples\" and \"neg ctrls\" while ensuring that there is not too much difference among \"samples\""),
+              tags$li("The ", tags$code("ul_to_add"), " column indicates how much water to add or remove via centrivapping, but likely holds little meaning for pooling")
+            ),
+            tags$li("Adjust settings as necessary and repeat until desired results are achieved"),
+            tags$br(),
+            tags$li("Download the processed data")
+          )
       ),
       
-      conditionalPanel(
-        condition = "input.pooling",
-        hr(),
-        h4("Characteristics of Samples Before Normalization"),
-        numericInput("max_vol", "Max Vol to Transfer per Source Well (µL):", value = 90, min = 1),
-        hr(),
-        h4("Characteristics of Samples After Normalization"),
-        # Hidden input for number of transfers (set to 1)
-        div(style = "display: none;",
-            numericInput("number_PCR_rxns_pooling", "Number of Transfers per Source Well to Destination Well:", value = 1, min = 1)
+      sidebarLayout(
+        sidebarPanel(
+          fileInput("sample_files", "Upload Sample-concentration CSV From Step 2", accept = ".csv"),
+          
+          checkboxInput("pooling", "Pooling", value = FALSE),
+          
+          # Conditional panels based on pooling checkbox
+          conditionalPanel(
+            condition = "!input.pooling",
+            # Section break
+            hr(),
+            h4("Characteristics of Samples Before Normalization"),
+            numericInput("max_vol", "Max Vol to Transfer per Source Well (µL):", value = 90, min = 1),
+            
+            # Section break
+            hr(),
+            h4("Characteristics of Samples After Normalization"),
+            numericInput("number_PCR_rxns", "Number of Reactions Needed per Destination Well:", value = 36, min = 1),
+            numericInput("ul_per_PCR", "Targeted Final Volume per Rxn in Destination Well (µL):", value = 2, min = 0, step = 0.5),
+            numericInput("DNA_per_PCR", "DNA per Rxn in Destination Well (ng):", value = 10, min = 0, step = 0.1)
+          ),
+          
+          conditionalPanel(
+            condition = "input.pooling",
+            hr(),
+            h4("Characteristics of Samples Before Normalization"),
+            numericInput("max_vol", "Max Vol to Transfer per Source Well (µL):", value = 90, min = 1),
+            hr(),
+            h4("Characteristics of Samples After Normalization"),
+            # Hidden input for number of transfers (set to 1)
+            div(style = "display: none;",
+                numericInput("number_PCR_rxns_pooling", "Number of Transfers per Source Well to Destination Well:", value = 1, min = 1)
+            ),
+            numericInput("ul_per_PCR_pooling", "Targeted Final Volume per Source Well in Destination Well (µL):", value = 0, min = 0, step = 0.5),
+            numericInput("DNA_per_PCR_pooling", "Targeted Amount of DNA per Source Well in Destination Well (ng):", value = 10, min = 0, step = 0.1)
+          ),
+          
+          br(),
+          # Error messages display
+          conditionalPanel(
+            condition = "output.show_error",
+            div(
+              style = "color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; border-radius: 4px; padding: 10px; margin-bottom: 10px;",
+              strong("Error: "),
+              textOutput("error_message", inline = TRUE)
+            )
+          ),
+          downloadButton("download", "Download processed data")
         ),
-        numericInput("ul_per_PCR_pooling", "Targeted Final Volume per Source Well in Destination Well (µL):", value = 0, min = 0, step = 0.5),
-        numericInput("DNA_per_PCR_pooling", "Targeted Amount of DNA per Source Well in Destination Well (ng):", value = 10, min = 0, step = 0.1)
-      ),
-      
-      br(),
-      # Error messages display
-      conditionalPanel(
-        condition = "output.show_error",
-        div(
-          style = "color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; border-radius: 4px; padding: 10px; margin-bottom: 10px;",
-          strong("Error: "),
-          textOutput("error_message", inline = TRUE)
+        mainPanel(
+          # Desktop instructions (appears in main panel on larger screens)
+          div(class = "instructions-desktop instructions-box",
+              h4("Instructions:"),
+              tags$ul(
+                tags$li("Load the sample concentration file(s) from step 2."),
+                tags$ul(
+                  tags$li("You may have more than one file if some samples were diluted and requanted")
+                ),
+                tags$li("If you are using this to calculate volumes for pooling, then check the box"),
+                tags$li("Add the max volume to transfer per source well in your source plate"),
+                tags$ul(
+                  tags$li("Underestimate the volume")
+                ),
+                tags$li("Fill in the remaining values which describe the characteristics of the sample after it is normalized"),
+                tags$ul(
+                  tags$li("The amount of DNA in the destination well should be estimated based on the mean DNA concentration of the \"samples\" and the desired goals of the normalization")
+                ),
+                tags$br(),
+                tags$li("Evaluate the columns: ", tags$code("transfer_volume"), ", ", tags$code("ul_to_add"), ", ", tags$code("actual_ng_dna"), " with respect to ", tags$code("sample_type")),
+                tags$ul(
+                  tags$li("It is a good sign if the ", tags$code("transfer_volume"), " is less than the max for \"samples\" and the max for \"neg ctrls\""),
+                  tags$li("It is a good sign if the ", tags$code("actual_ng_dna"), " is equal to the target for \"samples\" and less than the target for \"neg ctrls\""),
+                  tags$li("It is desirable to maximize the difference between the ", tags$code("actual_ng_dna"), " for \"samples\" and \"neg ctrls\" while ensuring that there is not too much difference among \"samples\""),
+                  tags$li("The ", tags$code("ul_to_add"), " column indicates how much water to add or remove via centrivapping, but likely holds little meaning for pooling")
+                ),
+                tags$li("Adjust settings as necessary and repeat until desired results are achieved"),
+                tags$br(),
+                tags$li("Download the processed data")
+              )
+          ),
+          
+          # Plot controls
+          conditionalPanel(
+            condition = "output.show_plot_controls",
+            fluidRow(
+              column(4,
+                     selectInput("plot_y_axis", "Select Y-axis for boxplot:",
+                                 choices = NULL,
+                                 selected = NULL)
+              ),
+              column(8, br()) # spacing
+            )
+          ),
+          
+          # Boxplot
+          conditionalPanel(
+            condition = "output.show_plot",
+            plotOutput("boxplot", height = "400px"),
+            br()
+          ),
+          
+          # Results table
+          DTOutput("results_table")
         )
-      ),
-      downloadButton("download", "Download processed data")
-    ),
-    mainPanel(
-      # Instructions
-      div(
-        style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-        h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-        tags$ul(
-          tags$li("Load the sample concentration file(s) from step 2."),
-          tags$ul(
-            tags$li("You may have more than one file if some samples were diluted and requanted")
-          ),
-          tags$li("If you are using this to calculate volumes for pooling, then check the box"),
-          tags$li("Add the max volume to transfer per source well in your source plate"),
-          tags$ul(
-            tags$li("Underestimate the volume")
-          ),
-          tags$li("Fill in the remaining values which describe the characteristics of the sample after it is normalized"),
-          tags$ul(
-            tags$li("The amount of DNA in the destination well should be estimated based on the mean DNA concentration of the \"samples\" and the desired goals of the normalization")
-          ),
-          tags$br(),
-          tags$li("Evaluate the columns: ", tags$code("transfer_volume"), ", ", tags$code("ul_to_add"), ", ", tags$code("actual_ng_dna"), " with respect to ", tags$code("sample_type")),
-          tags$ul(
-            tags$li("It is a good sign if the ", tags$code("transfer_volume"), " is less than the max for \"samples\" and the max for \"neg ctrls\""),
-            tags$li("It is a good sign if the ", tags$code("actual_ng_dna"), " is equal to the target for \"samples\" and less than the target for \"neg ctrls\""),
-            tags$li("It is desirable to maximize the difference between the ", tags$code("actual_ng_dna"), " for \"samples\" and \"neg ctrls\" while ensuring that there is not too much difference among \"samples\""),
-            tags$li("The ", tags$code("ul_to_add"), " column indicates how much water to add or remove via centrivapping, but likely holds little meaning for pooling")
-          ),
-          tags$li("Adjust settings as necessary and repeat until desired results are achieved"),
-          tags$br(),
-          tags$li("Download the processed data")
-        )
-      ),
-      
-      # Plot controls
-      conditionalPanel(
-        condition = "output.show_plot_controls",
-        fluidRow(
-          column(4,
-                 selectInput("plot_y_axis", "Select Y-axis for boxplot:",
-                             choices = NULL,
-                             selected = NULL)
-          ),
-          column(8, br()) # spacing
-        )
-      ),
-      
-      # Boxplot
-      conditionalPanel(
-        condition = "output.show_plot",
-        plotOutput("boxplot", height = "400px"),
-        br()
-      ),
-      
-      # Results table
-      DTOutput("results_table")
-    )
+      )
   )
 )
 

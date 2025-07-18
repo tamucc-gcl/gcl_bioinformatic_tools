@@ -532,6 +532,7 @@ parse_number_range <- function(input_string) {
 }
 
 #### UI ####
+#### UI ####
 ui <- fluidPage(
   waiter::useWaiter(),
   
@@ -555,190 +556,274 @@ ui <- fluidPage(
       padding: 15px !important;
       margin: 10px !important;
     }
+    
+    /* Instructions styling */
+    .instructions-box {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .instructions-box h4 {
+      margin-top: 0;
+      color: #495057;
+    }
+    
+    /* Mobile/smaller screens - instructions above sidebar */
+    @media (max-width: 1199px) {
+      .instructions-mobile {
+        display: block;
+        order: -1; /* Ensures it appears first */
+      }
+      
+      .instructions-desktop {
+        display: none;
+      }
+      
+      .tab-content-mobile {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    
+    /* Desktop/larger screens - instructions in main panel */
+    @media (min-width: 1200px) {
+      .instructions-mobile {
+        display: none;
+      }
+      
+      .instructions-desktop {
+        display: block;
+      }
+    }
   "))),
   
   titlePanel("Step 1: Model DNA Concentration"),
-  sidebarLayout(
-    sidebarPanel(
-      # Shown only on Data Input tab
-      conditionalPanel(
-        condition = "input.main_tab == 'Data Input'",
-        fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
-        fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
-        actionButton("load_data", "Load Data"),
-        uiOutput("data_status"),
-        br(),  
-        br(),  
-        selectInput("quant_kit", "Quant Kit Used",
-                    choices = c("accublue-nextgen", "accublue", "accuclear"),
-                    selected = "accuclear"),
-        
-        # Advanced settings - collapsible section
-        tags$details(
-          tags$summary(tags$b("Advanced Settings (click to expand/collapse)")),
-          br(),
-          uiOutput("x_var_selector"),
-          uiOutput("y_var_selector"),
-          style = "margin-top: 15px;"
-        ),
-        br(),  
-        br(),  
-        textInput("selected_standards", "Enter Standard Rows (comma-separated or range, e.g. '193-196, 199'):", "")
-      ),
-      # "Standards to Drop" appears on multiple tabs
-      conditionalPanel(
-        condition = "input.main_tab == 'Standards Preview' || input.main_tab == 'Model Results'",
-        textInput("drop_standards", "Standards to Drop (comma-separated or range of standard_index, e.g. '1-3, 5'):", "")
-      ),
-      # Shown only on Model Results: Modelling Options and average influence option
-      conditionalPanel(
-        condition = "input.main_tab == 'Model Results'",
-        tags$details(
-          tags$summary(tags$b("Select Models and Log Transform Options (click to expand/collapse)")),
-          fluidRow(
-            column(6,
-                   wellPanel(
-                     h5("Linear Model"),
-                     checkboxInput("model_linear", "Enable", TRUE),
-                     checkboxInput("log_x_linear", "Log X", FALSE),
-                     checkboxInput("log_y_linear", "Log Y", FALSE),
-                     checkboxInput("show_fit_line_linear", "Show Best-Fit Line", TRUE),
-                     checkboxInput("show_ci_linear", "Show CI", FALSE),
-                     checkboxInput("show_pi_linear", "Show PI", FALSE)
-                   )
-            ),
-            column(6,
-                   wellPanel(
-                     h5("Quadratic Model"),
-                     checkboxInput("model_quadratic", "Enable", TRUE),
-                     checkboxInput("log_x_quadratic", "Log X", FALSE),
-                     checkboxInput("log_y_quadratic", "Log Y", FALSE),
-                     checkboxInput("show_fit_line_quadratic", "Show Best-Fit Line", TRUE),
-                     checkboxInput("show_ci_quadratic", "Show CI", FALSE),
-                     checkboxInput("show_pi_quadratic", "Show PI", FALSE)
-                   )
+  
+  div(class = "tab-content-mobile",
+      sidebarLayout(
+        sidebarPanel(
+          # Mobile instructions for Data Input tab
+          conditionalPanel(
+            condition = "input.main_tab == 'Data Input'",
+            div(class = "instructions-mobile instructions-box",
+                h4("Instructions:"),
+                tags$ul(
+                  tags$li("Select the RFU Data and Plate Map Files"),
+                  tags$li("Click ", tags$code("Load Data")),
+                  tags$li("Confirm that the Quant Kit and Standard Rows were correctly detected"),
+                  tags$li("Go to ", tags$code("Model Results"), " Tab")
+                )
             )
           ),
-          fluidRow(
-            column(6,
-                   wellPanel(
-                     h5("Cubic Model"),
-                     checkboxInput("model_cubic", "Enable", TRUE),
-                     checkboxInput("log_x_cubic", "Log X", FALSE),
-                     checkboxInput("log_y_cubic", "Log Y", FALSE),
-                     checkboxInput("show_fit_line_cubic", "Show Best-Fit Line", TRUE),
-                     checkboxInput("show_ci_cubic", "Show CI", FALSE),
-                     checkboxInput("show_pi_cubic", "Show PI", FALSE)
-                   )
-            ),
-            column(6,
-                   wellPanel(
-                     h5("Power Model"),
-                     checkboxInput("model_power", "Enable", TRUE),
-                     checkboxInput("log_x_power", "Log X", TRUE),
-                     checkboxInput("log_y_power", "Log Y", TRUE),
-                     checkboxInput("show_fit_line_power", "Show Best-Fit Line", TRUE),
-                     checkboxInput("show_ci_power", "Show CI", FALSE),
-                     checkboxInput("show_pi_power", "Show PI", FALSE)
-                   )
+          
+          # Mobile instructions for Model Results tab
+          conditionalPanel(
+            condition = "input.main_tab == 'Model Results'",
+            div(class = "instructions-mobile instructions-box",
+                h4("Instructions:"),
+                tags$ul(
+                  tags$li("Evaluate how many data points are within the range of the standards, between the dashed lines (don't include 0 ng_per_well). If many data points are outside the range of the standards, then these estimates are unreliable and the quant protocol should be reevaluated."),
+                  tags$li("Scrutinize the standards. Sometimes a standard is off and it should be dropped if it doesn't follow the trend of the other standards."),
+                  tags$li("Scrutinize the top ranked model. Is it missing many data points? Does it look like a good fit? If something is off, consult with Sharon and Chris."),
+                  tags$li("Go to ", tags$code("Finalize"), " Tab")
+                )
             )
+          ),
+          
+          # Mobile instructions for Finalize tab
+          conditionalPanel(
+            condition = "input.main_tab == 'Finalize'",
+            div(class = "instructions-mobile instructions-box",
+                h4("Instructions:"),
+                tags$ul(
+                  tags$li("Confirm model and standards to use"),
+                  tags$li("Select ", tags$code("Generate Zip File")),
+                  tags$li("Select ", tags$code("Download Zip File"))
+                )
+            )
+          ),
+          
+          # Your existing sidebar content
+          # Shown only on Data Input tab
+          conditionalPanel(
+            condition = "input.main_tab == 'Data Input'",
+            fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
+            fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
+            actionButton("load_data", "Load Data"),
+            uiOutput("data_status"),
+            br(),  
+            br(),  
+            selectInput("quant_kit", "Quant Kit Used",
+                        choices = c("accublue-nextgen", "accublue", "accuclear"),
+                        selected = "accuclear"),
+            
+            # Advanced settings - collapsible section
+            tags$details(
+              tags$summary(tags$b("Advanced Settings (click to expand/collapse)")),
+              br(),
+              uiOutput("x_var_selector"),
+              uiOutput("y_var_selector"),
+              style = "margin-top: 15px;"
+            ),
+            br(),  
+            br(),  
+            textInput("selected_standards", "Enter Standard Rows (comma-separated or range, e.g. '193-196, 199'):", "")
+          ),
+          # "Standards to Drop" appears on multiple tabs
+          conditionalPanel(
+            condition = "input.main_tab == 'Standards Preview' || input.main_tab == 'Model Results'",
+            textInput("drop_standards", "Standards to Drop (comma-separated or range of standard_index, e.g. '1-3, 5'):", "")
+          ),
+          # Shown only on Model Results: Modelling Options and average influence option
+          conditionalPanel(
+            condition = "input.main_tab == 'Model Results'",
+            tags$details(
+              tags$summary(tags$b("Select Models and Log Transform Options (click to expand/collapse)")),
+              fluidRow(
+                column(6,
+                       wellPanel(
+                         h5("Linear Model"),
+                         checkboxInput("model_linear", "Enable", TRUE),
+                         checkboxInput("log_x_linear", "Log X", FALSE),
+                         checkboxInput("log_y_linear", "Log Y", FALSE),
+                         checkboxInput("show_fit_line_linear", "Show Best-Fit Line", TRUE),
+                         checkboxInput("show_ci_linear", "Show CI", FALSE),
+                         checkboxInput("show_pi_linear", "Show PI", FALSE)
+                       )
+                ),
+                column(6,
+                       wellPanel(
+                         h5("Quadratic Model"),
+                         checkboxInput("model_quadratic", "Enable", TRUE),
+                         checkboxInput("log_x_quadratic", "Log X", FALSE),
+                         checkboxInput("log_y_quadratic", "Log Y", FALSE),
+                         checkboxInput("show_fit_line_quadratic", "Show Best-Fit Line", TRUE),
+                         checkboxInput("show_ci_quadratic", "Show CI", FALSE),
+                         checkboxInput("show_pi_quadratic", "Show PI", FALSE)
+                       )
+                )
+              ),
+              fluidRow(
+                column(6,
+                       wellPanel(
+                         h5("Cubic Model"),
+                         checkboxInput("model_cubic", "Enable", TRUE),
+                         checkboxInput("log_x_cubic", "Log X", FALSE),
+                         checkboxInput("log_y_cubic", "Log Y", FALSE),
+                         checkboxInput("show_fit_line_cubic", "Show Best-Fit Line", TRUE),
+                         checkboxInput("show_ci_cubic", "Show CI", FALSE),
+                         checkboxInput("show_pi_cubic", "Show PI", FALSE)
+                       )
+                ),
+                column(6,
+                       wellPanel(
+                         h5("Power Model"),
+                         checkboxInput("model_power", "Enable", TRUE),
+                         checkboxInput("log_x_power", "Log X", TRUE),
+                         checkboxInput("log_y_power", "Log Y", TRUE),
+                         checkboxInput("show_fit_line_power", "Show Best-Fit Line", TRUE),
+                         checkboxInput("show_ci_power", "Show CI", FALSE),
+                         checkboxInput("show_pi_power", "Show PI", FALSE)
+                       )
+                )
+              )
+            ),
+            h4("Plot Scaling Options"),
+            checkboxGroupInput("log_axis", "Log10 Scale Plot Axes:",
+                               choices = c("X Axis" = "log_x", "Y Axis" = "log_y"),
+                               selected = c("log_x", "log_y")),
+            checkboxInput("overlay_samples", "Overlay fitted sample points", TRUE),
+            selectInput("influence_option", "Influence Display Option:",
+                        choices = c("Standard Suggestions", "Standard Stats - Average", "Standard Stats - Model"),
+                        selected = "Standard Suggestions")
+            
           )
         ),
-        h4("Plot Scaling Options"),
-        checkboxGroupInput("log_axis", "Log10 Scale Plot Axes:",
-                           choices = c("X Axis" = "log_x", "Y Axis" = "log_y"),
-                           selected = c("log_x", "log_y")),
-        checkboxInput("overlay_samples", "Overlay fitted sample points", TRUE),
-        selectInput("influence_option", "Influence Display Option:",
-                    choices = c("Standard Suggestions", "Standard Stats - Average", "Standard Stats - Model"),
-                    selected = "Standard Suggestions")
-        
-      )
-    ),
-    mainPanel(
-      # Custom navigation header that appears above tab content on all tabs
-      div(
-        style = "border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px;",
-        div(
-          style = "display: flex; justify-content: space-between; align-items: center;",
-          # Left side - could add additional navigation elements here if needed
-          div(),
-          # Right side - Return to Menu button
-          tags$a(href = "http://10.5.146.65/DNA_Quantification/", 
-                 target = "_blank",  # Remove this line if you want same tab
-                 "Return to Menu",
-                 style = paste0("color: #337ab7; text-decoration: none; font-weight: bold; ",
-                                "padding: 8px 16px; border: 1px solid #337ab7; ",
-                                "border-radius: 4px; background-color: #f8f9fa; ",
-                                "transition: background-color 0.2s;"),
-                 onmouseover = "this.style.backgroundColor='#e9ecef'",
-                 onmouseout = "this.style.backgroundColor='#f8f9fa'")
+        mainPanel(
+          # Custom navigation header that appears above tab content on all tabs
+          div(
+            style = "border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px;",
+            div(
+              style = "display: flex; justify-content: space-between; align-items: center;",
+              # Left side - could add additional navigation elements here if needed
+              div(),
+              # Right side - Return to Menu button
+              tags$a(href = "http://10.5.146.65/DNA_Quantification/", 
+                     target = "_blank",  # Remove this line if you want same tab
+                     "Return to Menu",
+                     style = paste0("color: #337ab7; text-decoration: none; font-weight: bold; ",
+                                    "padding: 8px 16px; border: 1px solid #337ab7; ",
+                                    "border-radius: 4px; background-color: #f8f9fa; ",
+                                    "transition: background-color 0.2s;"),
+                     onmouseover = "this.style.backgroundColor='#e9ecef'",
+                     onmouseout = "this.style.backgroundColor='#f8f9fa'")
+            )
+          ),
+          
+          # Your existing tabsetPanel
+          tabsetPanel(id = "main_tab",
+                      tabPanel("Data Input", 
+                               # Desktop instructions for Data Input tab
+                               div(class = "instructions-desktop instructions-box",
+                                   h4("Instructions:"),
+                                   tags$ul(
+                                     tags$li("Select the RFU Data and Plate Map Files"),
+                                     tags$li("Click ", tags$code("Load Data")),
+                                     tags$li("Confirm that the Quant Kit and Standard Rows were correctly detected"),
+                                     tags$li("Go to ", tags$code("Model Results"), " Tab")
+                                   )
+                               ),
+                               DTOutput("data_table")
+                      ),
+                      tabPanel("Model Results", 
+                               # Desktop instructions for Model Results tab
+                               div(class = "instructions-desktop instructions-box",
+                                   h4("Instructions:"),
+                                   tags$ul(
+                                     tags$li("Evaluate how many data points are within the range of the standards, between the dashed lines (don't include 0 ng_per_well). If many data points are outside the range of the standards, then these estimates are unreliable and the quant protocol should be reevaluated."),
+                                     tags$li("Scrutinize the standards. Sometimes a standard is off and it should be dropped if it doesn't follow the trend of the other standards."),
+                                     tags$li("Scrutinize the top ranked model. Is it missing many data points? Does it look like a good fit? If something is off, consult with Sharon and Chris."),
+                                     tags$li("Go to ", tags$code("Finalize"), " Tab")
+                                   )
+                               ),
+                               tagList(
+                                 plotOutput("model_grid"),
+                                 DTOutput("standards_influence_table"),
+                                 DTOutput("model_comp_table"),
+                                 htmlOutput("model_comp_desc")
+                               )
+                      ),
+                      tabPanel("Finalize",
+                               # Desktop instructions for Finalize tab
+                               div(class = "instructions-desktop instructions-box",
+                                   h4("Instructions:"),
+                                   tags$ul(
+                                     tags$li("Confirm model and standards to use"),
+                                     tags$li("Select ", tags$code("Generate Zip File")),
+                                     tags$li("Select ", tags$code("Download Zip File"))
+                                   )
+                               ),
+                               fluidRow(
+                                 column(6,
+                                        selectInput("chosen_models", "Choose Model(s) for Prediction:",
+                                                    choices = c("linear", "quadratic", "cubic", "power"),
+                                                    selected = NULL, multiple = TRUE)
+                                 ),
+                                 column(6,
+                                        selectInput("final_standards", "Choose Standards to Use:",
+                                                    choices = NULL, multiple = TRUE)
+                                 )
+                               ),
+                               br(),
+                               actionButton("generate_zip", "Generate Zip File"),
+                               uiOutput("download_zip_ui")
+                      )
+          )
         )
-      ),
-      
-      # Your existing tabsetPanel
-      tabsetPanel(id = "main_tab",
-                  tabPanel("Data Input", 
-                           # Instructions for Data Input tab
-                           div(
-                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                             tags$ul(
-                               tags$li("Select the RFU Data and Plate Map Files"),
-                               tags$li("Click ", tags$code("Load Data")),
-                               tags$li("Confirm that the Quant Kit and Standard Rows were correctly detected"),
-                               tags$li("Go to ", tags$code("Model Results"), " Tab")
-                             )
-                           ),
-                           DTOutput("data_table")
-                  ),
-                  tabPanel("Model Results", 
-                           # Instructions for Model Results tab
-                           div(
-                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                             tags$ul(
-                               tags$li("Evaluate how many data points are within the range of the standards, between the dashed lines (don't include 0 ng_per_well). If many data points are outside the range of the standards, then these estimates are unreliable and the quant protocol should be reevaluated."),
-                               tags$li("Scrutinize the standards. Sometimes a standard is off and it should be dropped if it doesn't follow the trend of the other standards."),
-                               tags$li("Scrutinize the top ranked model. Is it missing many data points? Does it look like a good fit? If something is off, consult with Sharon and Chris."),
-                               tags$li("Go to ", tags$code("Finalize"), " Tab")
-                             )
-                           ),
-                           tagList(
-                             plotOutput("model_grid"),
-                             DTOutput("standards_influence_table"),
-                             DTOutput("model_comp_table"),
-                             htmlOutput("model_comp_desc")
-                           )
-                  ),
-                  tabPanel("Finalize",
-                           # Instructions for Finalize tab
-                           div(
-                             style = "background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px;",
-                             h4("Instructions:", style = "margin-top: 0; color: #495057;"),
-                             tags$ul(
-                               tags$li("Confirm model and standards to use"),
-                               tags$li("Select ", tags$code("Generate Zip File")),
-                               tags$li("Select ", tags$code("Download Zip File"))
-                             )
-                           ),
-                           fluidRow(
-                             column(6,
-                                    selectInput("chosen_models", "Choose Model(s) for Prediction:",
-                                                choices = c("linear", "quadratic", "cubic", "power"),
-                                                selected = NULL, multiple = TRUE)
-                             ),
-                             column(6,
-                                    selectInput("final_standards", "Choose Standards to Use:",
-                                                choices = NULL, multiple = TRUE)
-                             )
-                           ),
-                           br(),
-                           actionButton("generate_zip", "Generate Zip File"),
-                           uiOutput("download_zip_ui")
-                  )
       )
-    )
   )
 )
 
