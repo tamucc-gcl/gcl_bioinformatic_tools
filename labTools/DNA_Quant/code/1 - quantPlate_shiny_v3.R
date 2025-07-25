@@ -9,6 +9,7 @@ library(shiny) |> suppressMessages() |> suppressWarnings()
 library(shinyFiles) |> suppressMessages() |> suppressWarnings()
 library(readr) |> suppressMessages() |> suppressWarnings()
 library(readxl) |> suppressMessages() |> suppressWarnings()
+library(writexl) |> suppressMessages() |> suppressWarnings()
 library(dplyr) |> suppressMessages() |> suppressWarnings()
 library(stringr) |> suppressMessages() |> suppressWarnings()
 library(tidyr) |> suppressMessages() |> suppressWarnings()
@@ -279,7 +280,9 @@ fit_model <- function(df_model, model_name, input_values){
   model_obj <- tryCatch(
     lm(formula, data = filter(df_model, included_in_model)),
     error = function(e) {
-      showNotification(paste("Error fitting", model_name, "model:", e$message), type = "error")
+      showNotification(paste("Error fitting", model_name, "model:", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       NULL
     }
   )
@@ -892,15 +895,17 @@ server <- function(input, output, session) {
       showNotification(
         paste("Data loaded successfully!", nrow(data_combined), "rows loaded with", 
               sum(!is.na(data_combined$rfu)), "RFU measurements"), 
-        type = "message", 
-        duration = 5
+        type = "message",
+        duration = NULL,
+        closeButton = TRUE
       )
       
     }, error = function(e) {
       showNotification(
         paste("File Loading Error:", e$message), 
         type = "error", 
-        duration = 12,
+        duration = NULL,    # Makes it persistent
+        closeButton = TRUE  # Adds a close button
         id = "file_error"
       )
       data_all(NULL)  # Clear any existing data
@@ -982,7 +987,9 @@ server <- function(input, output, session) {
             paste("Row", paste(expanded_rows[!valid_mask], collapse = ", "), 
                   "does not exist in your dataset. Available standard rows are:", 
                   paste(std_rows, collapse = ", ")), 
-            type = "warning", duration = 10
+            type = "warning", 
+            duration = NULL,    # Makes it persistent
+            closeButton = TRUE  # Adds a close button
           )
         }
       }
@@ -1066,7 +1073,9 @@ server <- function(input, output, session) {
     df_model <- standards_data() %>% filter(included_in_model == "Yes")
     df_model <- as.data.frame(df_model)
     if(nrow(df_model) == 0) {
-      showNotification("No standards available for model fitting.", type = "error")
+      showNotification("No standards available for model fitting.", type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(list())
     }
     rownames(df_model) <- df_model$standard_index
@@ -1245,7 +1254,9 @@ server <- function(input, output, session) {
       }, error = function(e) {
         # If any error occurs in metric calculation, return NULL
         showNotification(paste("Error calculating metrics for", model_name, ":", e$message), 
-                         type = "warning", duration = 3)
+                         type = "warning",
+                         duration = NULL,
+                         closeButton = TRUE)
         return(NULL)
       })
     })
@@ -1272,7 +1283,9 @@ server <- function(input, output, session) {
       do.call(rbind, metrics)
     }, error = function(e) {
       showNotification(paste("Error combining model metrics:", e$message), 
-                       type = "error", duration = 5)
+                       type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(data.frame(
         Model = character(0),
         Adj_R2 = numeric(0),
@@ -1309,7 +1322,9 @@ server <- function(input, output, session) {
         mutate(RANK = dense_rank(RANK))
     }, error = function(e) {
       showNotification(paste("Error processing model metrics:", e$message), 
-                       type = "error", duration = 5)
+                       type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(data.frame(
         Model = character(0),
         Adj_R2 = numeric(0),
@@ -1718,6 +1733,7 @@ server <- function(input, output, session) {
     
     zip_path <- file.path(paste0(prefix, "_output_", Sys.Date(), ".zip"))
     prediction_path <- file.path(tmpdir, paste0(prefix, "_sample_predictions_", Sys.Date(), ".csv"))
+    excel_path <- file.path(tmpdir, paste0(prefix, "_sample_predictions_", Sys.Date(), ".xlsx"))
     inputs_path <- file.path(tmpdir, paste0(prefix, "_inputs_", Sys.Date(), ".txt"))
     json_path <- file.path(tmpdir, paste0(prefix, "_settings_", Sys.Date(), ".json"))
     model_path <- file.path(tmpdir, paste0(prefix, "_models_", Sys.Date(), ".rds"))
@@ -1764,6 +1780,9 @@ server <- function(input, output, session) {
     
     write_csv(sample_data, prediction_path)
     
+    #### Output as Excel ####
+    write_xlsx(sample_data, excel_path)
+    
     #### Output inputs ####
     input_list <- lapply(names(input), function(name) {
       paste(name, ":", toString(input[[name]]))
@@ -1805,6 +1824,7 @@ server <- function(input, output, session) {
                       json_path,
                       model_path,
                       prediction_path,
+                      excel_path,
                       plots_path)
     
     

@@ -1,9 +1,10 @@
-library(shiny)
-library(DT)
-library(readr)
-library(dplyr)
-library(stringr)   # you only need stringr, not the full tidyverse
-library(ggplot2)
+library(shiny) |> suppressMessages() |> suppressWarnings()
+library(DT) |> suppressMessages() |> suppressWarnings()
+library(readr) |> suppressMessages() |> suppressWarnings()
+library(dplyr) |> suppressMessages() |> suppressWarnings()
+library(stringr) |> suppressMessages() |> suppressWarnings()
+library(ggplot2) |> suppressMessages() |> suppressWarnings()
+library(writexl) |> suppressMessages() |> suppressWarnings()
 
 ui <- fluidPage(
   tags$head(tags$style(HTML("
@@ -255,14 +256,15 @@ server <- function(input, output, session){
                                     str_to_title() %>%
                                     str_replace("Ul", "µL") %>%
                                     str_replace("Ng", "ng") %>%
-                                    str_replace("Pg", "pg"))
+                                    str_replace("Pg", "pg") %>%
+                                    str_replace('Pcr', 'RXN'))
         
         # Preserve current selection if it's still valid, otherwise use first option
         current_selection <- input$plot_y_axis
         selected_value <- if (!is.null(current_selection) && current_selection %in% plot_cols) {
           current_selection
         } else {
-          plot_cols[1]
+          str_subset(plot_cols, 'actual')
         }
         
         updateSelectInput(session, "plot_y_axis", 
@@ -307,7 +309,8 @@ server <- function(input, output, session){
       str_to_title() %>%
       str_replace("Ul", "µL") %>%
       str_replace("Ng", "ng") %>%
-      str_replace("Pg", "pg")
+      str_replace("Pg", "pg") %>%
+      str_replace('Pcr', 'RXN')
     
     # Create the plot
     p <- ggplot(df, aes(x = sample_type, y = .data[[selected_col]], fill = sample_type)) +
@@ -331,7 +334,7 @@ server <- function(input, output, session){
     
     tryCatch({
       df <- read_csv(input$sample_files$datapath, show_col_types = FALSE) %>%
-        group_by(dna_extract_tube_id) %>%
+        group_by(dna_extract_id) %>%
         filter(quant_stage == "requant" | !any(quant_stage == "requant")) %>%
         slice_head(n = 1) %>%
         ungroup()
@@ -378,7 +381,7 @@ server <- function(input, output, session){
       }
       
       # Check for required columns
-      required_cols <- c("dna_extract_tube_id", "quant_stage")
+      required_cols <- c("dna_extract_id", "quant_stage")
       missing_cols <- setdiff(required_cols, colnames(df))
       if (length(missing_cols) > 0) {
         return(list(valid = FALSE, message = paste("Missing required columns:", paste(missing_cols, collapse = ", "))))
@@ -402,8 +405,8 @@ server <- function(input, output, session){
       }
       
       # Check for missing values in critical columns
-      if (any(is.na(df$dna_extract_tube_id))) {
-        return(list(valid = FALSE, message = "Missing values found in 'dna_extract_tube_id' column"))
+      if (any(is.na(df$dna_extract_id))) {
+        return(list(valid = FALSE, message = "Missing values found in 'dna_extract_id' column"))
       }
       
       return(list(valid = TRUE, message = ""))
@@ -437,7 +440,7 @@ server <- function(input, output, session){
     tryCatch({
       dna_concentration <- read_csv(input$sample_files$datapath, show_col_types = FALSE) %>%
         # keep only the original quant OR (if present) its requant
-        group_by(dna_extract_tube_id) %>%
+        group_by(dna_extract_id) %>%
         filter(quant_stage == "requant" | !any(quant_stage == "requant")) %>%
         slice_head(n = 1) %>%
         ungroup()
@@ -509,7 +512,8 @@ server <- function(input, output, session){
         showNotification(
           "Please upload a CSV file before downloading",
           type = "error",
-          duration = 5
+          duration = NULL,
+          closeButton = TRUE
         )
         return(NULL)
       }
@@ -522,19 +526,23 @@ server <- function(input, output, session){
         showNotification(
           paste("Cannot download:", if(error_state$message != "") error_state$message else "No valid data to download"),
           type = "error",
-          duration = 5
+          duration = NULL,
+          closeButton = TRUE
         )
         return(NULL)
       }
       
       tryCatch({
         write_csv(df, file)
-        showNotification("File downloaded successfully!", type = "message", duration = 3)
+        showNotification("File downloaded successfully!", type = "message",
+                         duration = NULL,
+                         closeButton = TRUE)
       }, error = function(e) {
         showNotification(
           paste("Download failed:", e$message),
           type = "error",
-          duration = 5
+          duration = NULL,
+          closeButton = TRUE
         )
       })
     }

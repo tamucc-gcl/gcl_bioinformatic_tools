@@ -9,6 +9,7 @@ library(shiny) |> suppressMessages() |> suppressWarnings()
 library(shinyBS) |> suppressMessages() |> suppressWarnings()         # For collapsible panels
 library(shinyFiles)  |> suppressMessages() |> suppressWarnings()     # For file saving dialogs on the server side
 library(readxl) |> suppressMessages() |> suppressWarnings()
+library(writexl) |> suppressMessages() |> suppressWarnings()
 library(readr) |> suppressMessages() |> suppressWarnings()
 library(dplyr) |> suppressMessages() |> suppressWarnings()
 library(janitor) |> suppressMessages() |> suppressWarnings()
@@ -153,7 +154,9 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
                            'Please check that the number of samples and replicates matches what is expected.')
     
     if (!is.null(session)) {
-      showNotification(info_message, type = "message", duration = 8, session = session)
+      showNotification(info_message, type = "message",
+                       duration = NULL,
+                       closeButton = TRUE, session = session)
     } else {
       message(info_message) # fallback for console
     }
@@ -162,7 +165,9 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
     if(nrow(map_data) * (nrow(quant_data) / nrow(map_data)) != nrow(out)){
       warning_message <- 'Check sample names are unique with plate ID, plate row, and plate column'
       if (!is.null(session)) {
-        showNotification(warning_message, type = "warning", duration = 10, session = session)
+        showNotification(warning_message, type = "warning",
+                         duration = NULL,
+                         closeButton = TRUE, session = session)
       } else {
         message(warning_message) # fallback for console
       }
@@ -505,7 +510,7 @@ ui <- fluidPage(
                            tags$li("Select ", tags$code("Generate Zip File"), " then ", tags$code("Download Zip File"))
                          )
                      ),
-                     plotOutput("dna_plot")
+                     plotOutput("dna_plot", height = "calc(100vh - 250px)")
                    )
                  )
              )
@@ -537,11 +542,15 @@ server <- function(input, output, session) {
       if (length(all_sheets) > 0) {
         updateSelectInput(session, "sheet_name", choices = all_sheets)
       } else {
-        showNotification("No sheets found in Excel files.", type = "error", duration = 10)
+        showNotification("No sheets found in Excel files.", type = "error",
+                         duration = NULL,
+                         closeButton = TRUE)
         updateSelectInput(session, "sheet_name", choices = NULL)
       }
     }, error = function(e) {
-      showNotification(paste("Error reading Excel file(s):", e$message), type = "error", duration = 10)
+      showNotification(paste("Error reading Excel file(s):", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       updateSelectInput(session, "sheet_name", choices = NULL)
     })
   })
@@ -568,7 +577,9 @@ server <- function(input, output, session) {
     }, error = function(e) {
       # Only show error if CSV files were actually selected
       if (!is.null(input$csv_files)) {
-        showNotification(paste("Error processing CSV files:", e$message), type = "error", duration = 10)
+        showNotification(paste("Error processing CSV files:", e$message), type = "error",
+                         duration = NULL,
+                         closeButton = TRUE)
       }
     })
   })
@@ -627,11 +638,15 @@ server <- function(input, output, session) {
         process_merged_data() 
       
       showNotification(paste("Data loaded successfully!", nrow(merged_dna_quants), "samples loaded from", nrow(input$excel_file), "Excel file(s)."), 
-                       type = "message", duration = 5)
+                       type = "message",
+                       duration = NULL,
+                       closeButton = TRUE)
       
       merged_dna_quants
     }, error = function(e) {
-      showNotification(paste("Data Loading Error:", e$message), type = "error", duration = 15)
+      showNotification(paste("Data Loading Error:", e$message),
+                       duration = NULL,
+                       closeButton = TRUE)
       return(NULL)
     })
   })
@@ -736,8 +751,9 @@ server <- function(input, output, session) {
       if (final_nrow == 0 && original_nrow > 0) {
         showNotification(
           paste("All", original_nrow, "rows filtered out. No data matches filter criteria."), 
-          type = "warning", 
-          duration = 5
+          type = "warning",
+          duration = NULL,
+          closeButton = TRUE
         )
       }
       
@@ -747,8 +763,9 @@ server <- function(input, output, session) {
       print(paste("ERROR in filtering:", e$message))
       showNotification(
         paste("Error in filtering:", e$message), 
-        type = "error", 
-        duration = 5
+        type = "error",
+        duration = NULL,
+        closeButton = TRUE
       )
       # Return empty tibble with same structure
       return(data %>% slice(0))
@@ -854,8 +871,9 @@ server <- function(input, output, session) {
       if (nrow(filtered_data()) == 0) {
         showNotification(
           "Cannot fit model: No data remains after filtering. Please adjust your filters.", 
-          type = "error", 
-          duration = 10
+          type = "error",
+          duration = NULL,
+          closeButton = TRUE
         )
         return(NULL)
       }
@@ -866,8 +884,9 @@ server <- function(input, output, session) {
         showNotification(
           paste("Cannot fit model: Insufficient data after filtering and removing zero values.",
                 "Need at least 2 observations, but only have", nrow(model_data)), 
-          type = "error", 
-          duration = 10
+          type = "error",
+          duration = NULL,
+          closeButton = TRUE
         )
         return(NULL)
       }
@@ -999,7 +1018,9 @@ server <- function(input, output, session) {
       
       dna_model_bayes
     }, error = function(e) {
-      showNotification(paste("Model Fitting Error:", e$message), type = "error", duration = 15)
+      showNotification(paste("Model Fitting Error:", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(NULL)
     })
   })
@@ -1054,7 +1075,9 @@ server <- function(input, output, session) {
         dna_variability_interval = dna_variability_interval
       )
     }, error = function(e) {
-      showNotification(paste("Error calculating DNA summary:", e$message), type = "error", duration = 15)
+      showNotification(paste("Error calculating DNA summary:", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(NULL)
     })
   })
@@ -1113,7 +1136,9 @@ server <- function(input, output, session) {
       
       quant_files_flagged
     }, error = function(e) {
-      showNotification(paste("Error generating flagged table:", e$message), type = "error", duration = 15)
+      showNotification(paste("Error generating flagged table:", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       return(NULL)
     })
   })
@@ -1196,7 +1221,9 @@ server <- function(input, output, session) {
       }
       quant_plot
     }, error = function(e) {
-      showNotification(paste("Error generating plot:", e$message), type = "error", duration = 15)
+      showNotification(paste("Error generating plot:", e$message), type = "error",
+                       duration = NULL,
+                       closeButton = TRUE)
       ggplot() + 
         annotate("text", x = 0.5, y = 0.5, 
                  label = paste("Plot error:", e$message), 
@@ -1298,6 +1325,7 @@ server <- function(input, output, session) {
     
     zip_path <- file.path(paste0(prefix, "_output_", Sys.Date(), ".zip"))
     prediction_path <- file.path(tmpdir, paste0(prefix, "_sample_concentrations_", Sys.Date(), ".csv"))
+    excel_path <- file.path(tmpdir, paste0(prefix, "_sample_predictions_", Sys.Date(), ".xlsx"))
     inputs_path <- file.path(tmpdir, paste0(prefix, "_inputs_", Sys.Date(), ".txt"))
     json_path <- file.path(tmpdir, paste0(prefix, "_settings_", Sys.Date(), ".json"))
     model_code <- file.path(tmpdir, paste0(prefix, "_models_", Sys.Date(), ".stan"))
@@ -1329,6 +1357,9 @@ server <- function(input, output, session) {
     write_csv(out_table,
               file = prediction_path,
               na = '')
+    
+    #### Output as Excel ####
+    write_xlsx(out_table, excel_path)
     
     #### Output inputs ####
     input_list <- lapply(names(input), function(name) {
@@ -1388,6 +1419,7 @@ server <- function(input, output, session) {
                       model_path,
                       model_code,
                       prediction_path,
+                      excel_path,
                       plots_path)
     
     # Change working directory to the temporary directory
