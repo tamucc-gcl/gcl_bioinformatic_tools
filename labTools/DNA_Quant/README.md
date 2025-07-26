@@ -248,7 +248,12 @@ B01,sample,fish_001,sample,8500
    ```bash
    sudo systemctl restart shiny-server
    ```
-
+3. Install R Packages to be used by the shiny user
+   ```bash
+   sudo su - shiny
+   R
+   install.packages({PACKAGE})
+   ```
 ### Log Files
 Server logs are located at: `/var/log/shiny-server/`
 
