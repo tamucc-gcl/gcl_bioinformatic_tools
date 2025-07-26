@@ -905,7 +905,7 @@ server <- function(input, output, session) {
         paste("File Loading Error:", e$message), 
         type = "error", 
         duration = NULL,    # Makes it persistent
-        closeButton = TRUE  # Adds a close button
+        closeButton = TRUE,  # Adds a close button
         id = "file_error"
       )
       data_all(NULL)  # Clear any existing data
