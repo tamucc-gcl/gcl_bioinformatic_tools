@@ -244,6 +244,7 @@ server <- function(input, output, session){
   # Update plot y-axis choices when data changes
   observe({
     df <- process_data()
+    
     if (!is.null(df) && !error_state$has_error) {
       # Find relevant columns for plotting - more flexible pattern
       plot_cols <- colnames(df) %>% 
@@ -334,7 +335,7 @@ server <- function(input, output, session){
     
     tryCatch({
       df <- read_csv(input$sample_files$datapath, show_col_types = FALSE) %>%
-        group_by(dna_extract_id) %>%
+        group_by(across(any_of(c('dna_extract_id', 'dna_extract_tube_id')))) %>%
         filter(quant_stage == "requant" | !any(quant_stage == "requant")) %>%
         slice_head(n = 1) %>%
         ungroup()
@@ -381,11 +382,19 @@ server <- function(input, output, session){
       }
       
       # Check for required columns
-      required_cols <- c("dna_extract_id", "quant_stage")
-      missing_cols <- setdiff(required_cols, colnames(df))
-      if (length(missing_cols) > 0) {
+      contained_columns <- str_detect(colnames(df), "(^quant_stage$)|(dna_extract(_tube)?_id)")
+      if (sum(contained_columns) != 2) {
+        required_cols <- c("dna_extract_id", "dna_extract_tube_id", "quant_stage")
+        missing_cols <- setdiff(required_cols, colnames(df))
+        missing_cols <- str_subset(missing_cols, 'tube', negate = TRUE)
         return(list(valid = FALSE, message = paste("Missing required columns:", paste(missing_cols, collapse = ", "))))
       }
+      
+      # required_cols <- c("dna_extract_id", "dna_extract_tube_id", "quant_stage")
+      # missing_cols <- setdiff(required_cols, colnames(df))
+      # if (length(missing_cols) > 0) {
+      #   return(list(valid = FALSE, message = paste("Missing required columns:", paste(missing_cols, collapse = ", "))))
+      # }
       
       # Check for concentration columns (pg_per_ul_mean or ng_per_ul_mean)
       conc_cols <- colnames(df) %>% str_subset("^[pn]g_per_ul_mean$")
@@ -405,8 +414,14 @@ server <- function(input, output, session){
       }
       
       # Check for missing values in critical columns
-      if (any(is.na(df$dna_extract_id))) {
-        return(list(valid = FALSE, message = "Missing values found in 'dna_extract_id' column"))
+      if(any(str_detect(colnames(df), 'dna_extract_id'))){
+        if (any(is.na(df$dna_extract_id))) {
+          return(list(valid = FALSE, message = "Missing values found in 'dna_extract_id' column"))
+        }
+      } else if(any(str_detect(colnames(df), 'dna_extract_tube_id'))){
+        if (any(is.na(df$dna_extract_tube_id))) {
+          return(list(valid = FALSE, message = "Missing values found in 'dna_extract_tube_id' column"))
+        }
       }
       
       return(list(valid = TRUE, message = ""))
@@ -428,6 +443,16 @@ server <- function(input, output, session){
     
     # Get reactive input values
     inputs <- reactive_inputs()
+    message('DEBUG: Number data rows: ', nrow(df))
+    message('DEBUG: pooling toggle (TRUE = on, FALSE = off): ', input$pooling)
+    
+    message('DEBUG: ul per PCR: ', input$ul_per_PCR)
+    message('DEBUG: number PCR rxns: ', input$number_PCR_rxns)
+    message('DEBUG: DNA per PCR: ', input$DNA_per_PCR)
+    
+    message('DEBUG: ul per PCR: ', inputs$ul_per_PCR)
+    message('DEBUG: number PCR rxns: ', inputs$number_PCR_rxns)
+    message('DEBUG: DNA per PCR: ', inputs$DNA_per_PCR)
     
     # Validate file format and content
     validation <- validate_file(input$sample_files$datapath)
@@ -440,7 +465,7 @@ server <- function(input, output, session){
     tryCatch({
       dna_concentration <- read_csv(input$sample_files$datapath, show_col_types = FALSE) %>%
         # keep only the original quant OR (if present) its requant
-        group_by(dna_extract_id) %>%
+        group_by(across(any_of(c('dna_extract_id', 'dna_extract_tube_id')))) %>%
         filter(quant_stage == "requant" | !any(quant_stage == "requant")) %>%
         slice_head(n = 1) %>%
         ungroup()

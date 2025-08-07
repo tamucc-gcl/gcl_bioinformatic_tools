@@ -273,9 +273,9 @@ Server logs are located at: `/var/log/shiny-server/`
 <details>
   <summary>Click to expand</summary>
    
-- **Application 1:** [`code/1 - quantPlate_shiny_2.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/1%20-%20quantPlate_shiny_2.R)
-- **Application 2:** [`code/2 - dna_amount_shiny7.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/2%20-%20dna_amount_shiny7.R)  
-- **Application 3:** [`code/3 - Normalize_DNA_for_PCR.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/3%20-%20Normalize_DNA_for_PCR.R)
+- **Application 1:** [`code/1 - quantPlate_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/1%20-%20quantPlate_shiny_v3.R)
+- **Application 2:** [`code/2 - dna_amount_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/2%20-%20dna_amount_shiny_v9.R)  
+- **Application 3:** [`code/3 - Normalize_DNA_for_PCR.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/3%20-%20Normalize_DNA_for_PCR_v3.R)
 
 </details>
 
