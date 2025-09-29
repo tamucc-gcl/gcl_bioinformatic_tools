@@ -1725,6 +1725,8 @@ server <- function(input, output, session) {
     
     # Generate a prefix from file names (your existing helper)
     prefix <- tolower(common_prefix(input$file_raw$name, input$file_plate$name))
+    # write_rds(list(input$file_raw$name, input$file_plate$name), 'tmp.rds')
+    # prefix <- input$outnamePrefix
     
     # Create a temporary directory and file paths
     tmpdir <- tempdir()
