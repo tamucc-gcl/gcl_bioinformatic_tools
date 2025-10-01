@@ -600,6 +600,15 @@ ui <- fluidPage(
         display: block;
       }
     }
+        /* Remove Bootstrap's default form-group bottom margin for file inputs */
+    .form-group:has(input[type='file']) {
+      margin-bottom: 5px !important;
+    }
+    
+    /* Fallback for browsers without :has() support */
+    div.shiny-input-container input[type='file'] {
+      margin-bottom: 5px !important;
+    }
   "))),
   
   titlePanel("Step 1: Model DNA Concentration"),
@@ -653,8 +662,20 @@ ui <- fluidPage(
           # Shown only on Data Input tab
           conditionalPanel(
             condition = "input.main_tab == 'Data Input'",
-            fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
-            fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
+            tags$div(
+              fileInput("file_raw", "Upload Raw RFU Data File", accept = c(".csv", ".xls", ".xlsx")),
+              tags$p(style = "margin-top: -30px; margin-bottom: 15px; font-size: 12px; color: #777;",
+                     "Required columns: 'Wells' (e.g., A1, B2), 'Value' (RFU readings)")
+            ),
+            tags$div(
+              fileInput("file_plate", "Upload Plate Map File", accept = c(".csv", ".xls", ".xlsx")),
+              tags$p(style = "margin-top: -30px; margin-bottom: 15px; font-size: 12px; color: #777;",
+                     "Required: 'plate_id' (mark standards with 'standard'), plus either:",
+                     br(), "• 'sample_id' with well info (e.g., A1, B2), OR",
+                     br(), "• 'sample_row' and 'sample_column'",
+                     br(), "Optional: 'volume' (default: 1µL samples, 5µL standards)")
+            ),
+            actionButton("load_data", "Load Data"),
             actionButton("load_data", "Load Data"),
             uiOutput("data_status"),
             br(),  

@@ -334,17 +334,29 @@ ui <- fluidPage(
                  
                  sidebarLayout(
                    sidebarPanel(
-                     fileInput("excel_file", "Upload Source DNA Plate Map File(s)", 
-                               accept = c(".xlsx", ".xls"), multiple = TRUE),
+                     tags$div(
+                       fileInput("excel_file", "Upload Source DNA Plate Map File(s)", 
+                                 accept = c(".xlsx", ".xls"), multiple = TRUE),
+                       tags$p(style = "margin-top: -20px; margin-bottom: 15px; font-size: 12px; color: #777;",
+                              "Required columns: 'plate_id', 'plate_row', 'plate_col'",
+                              br(), "Optional: 'sample_id', 'sample_type'",
+                              br(), "Note: Variations like 'sample_plate_id' are also accepted")
+                     ),
                      selectInput("sheet_name", "Excel Sheet Name", choices = NULL),
-                     fileInput("csv_files", "Upload Modeled DNA Concentration Files (select all)", 
-                               multiple = TRUE, accept = ".csv"),
+                     tags$div(
+                       fileInput("csv_files", "Upload Modeled DNA Concentration Files (select all)", 
+                                 multiple = TRUE, accept = ".csv"),
+                       tags$p(style = "margin-top: -20px; margin-bottom: 15px; font-size: 12px; color: #777;",
+                              "Required: Matching plate identifiers and a concentration column (e.g., 'ng_per_ul', 'pg_per_ul')",
+                              br(), "These files should be outputs from Step 1")
+                     ),
                      selectInput("quant_type", "Quant Stage", 
                                  choices = c('Original' = 'original', 
                                              "Requantification" = 'requant'), 
                                  selected = 'original'),
                      actionButton("load_data", "Load Data"),
                      uiOutput("data_status")
+                   ),
                    ),
                    mainPanel(
                      # Desktop instructions (appears in main panel on larger screens)
@@ -699,13 +711,44 @@ server <- function(input, output, session) {
     # Create filter controls for character/factor columns
     for (col in char_cols) {
       unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
-      if (length(unique_vals) <= 20) {  # Only create filter if manageable number of options
+      
+      if (length(unique_vals) <= 20) {
+        # Low cardinality: use checkbox group
         controls[[paste0(col, "_filter")]] <- checkboxGroupInput(
           inputId = paste0(col, "_filter"),
           label = paste("Filter", str_to_title(str_replace_all(col, "_", " ")), ":"),
           choices = unique_vals,
           selected = unique_vals,
           inline = TRUE
+        )
+      } else {
+        # High cardinality: use search box with toggle
+        controls[[paste0(col, "_search_group")]] <- div(
+          style = "margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;",
+          tags$label(paste("Search", str_to_title(str_replace_all(col, "_", " ")), 
+                           paste0("(", length(unique_vals), " unique values):")),
+                     style = "font-weight: bold; display: block; margin-bottom: 5px;"),
+          fluidRow(
+            column(8,
+                   textInput(
+                     inputId = paste0(col, "_search"),
+                     label = NULL,
+                     placeholder = "Type to filter (partial match, comma-separated for multiple)",
+                     width = "100%"
+                   )
+            ),
+            column(4,
+                   radioButtons(
+                     inputId = paste0(col, "_search_mode"),
+                     label = NULL,
+                     choices = c("Keep matches" = "keep", "Remove matches" = "remove"),
+                     selected = "keep",
+                     inline = TRUE
+                   )
+            )
+          ),
+          helpText(style = "font-size: 11px; color: #666; margin-top: -10px;", 
+                   "Use commas for multiple values. Case-insensitive partial matching.")
         )
       }
     }
@@ -728,6 +771,7 @@ server <- function(input, output, session) {
     controls
   })
   
+  
   # NEW: Filtered data reactive
   filtered_data <- reactive({
     req(joined_data())
@@ -737,27 +781,37 @@ server <- function(input, output, session) {
     # Start with all data  
     filtered <- data
     
-    # Track if any filters have been applied
-    any_filters_applied <- FALSE
+    # Track initial row count for comparison
+    initial_rows <- nrow(filtered)
+    filter_messages <- list()
     
     # Check if we're in initial load state (all filters are NULL)
-    # by looking at all checkbox filters
     char_cols <- names(data)[sapply(data, function(x) is.character(x) || is.factor(x))]
     all_filters_null <- TRUE
     for (col in char_cols) {
       unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
       if (length(unique_vals) <= 20) {
+        # Check checkbox filter
         if (!is.null(input[[paste0(col, "_filter")]])) {
+          all_filters_null <- FALSE
+          break
+        }
+      } else {
+        # Check search filter
+        search_val <- input[[paste0(col, "_search")]]
+        if (!is.null(search_val) && nchar(trimws(search_val)) > 0) {
           all_filters_null <- FALSE
           break
         }
       }
     }
     
-    # Apply character/factor filters using dplyr
+    # Apply character/factor filters
     for (col in char_cols) {
       unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
-      if (length(unique_vals) <= 20) {  # Only columns with checkbox controls
+      
+      if (length(unique_vals) <= 20) {
+        # Handle checkbox filters (existing logic)
         filter_id <- paste0(col, "_filter")
         filter_input <- input[[filter_id]]
         
@@ -767,42 +821,115 @@ server <- function(input, output, session) {
           next
         }
         
-        # Filter has been created or we're past initial load
-        any_filters_applied <- TRUE
+        rows_before <- nrow(filtered)
         
         # Treat NULL as empty selection if we're past initial load
         if (is.null(filter_input) || length(filter_input) == 0) {
-          # Empty vector OR NULL after init - user unchecked all boxes, filter out everything
+          # Empty vector OR NULL after init - user unchecked all boxes
           filtered <- filtered %>% slice(0)
+          filter_messages[[length(filter_messages) + 1]] <- 
+            paste0(str_to_title(str_replace_all(col, "_", " ")), 
+                   " filter: Removed all ", rows_before, " rows (no values selected)")
           break
         } else {
           # Normal filtering when some values are selected
           filtered <- filtered %>% 
             filter(!!sym(col) %in% filter_input | is.na(!!sym(col)))
+          
+          rows_after <- nrow(filtered)
+          if (rows_before != rows_after) {
+            filter_messages[[length(filter_messages) + 1]] <- 
+              paste0(str_to_title(str_replace_all(col, "_", " ")), 
+                     " filter: ", rows_before - rows_after, " rows removed")
+          }
+        }
+        
+      } else {
+        # Handle search box filters for high-cardinality columns
+        search_id <- paste0(col, "_search")
+        search_input <- input[[search_id]]
+        search_mode <- input[[paste0(col, "_search_mode")]]
+        
+        if (!is.null(search_input) && nchar(trimws(search_input)) > 0) {
+          rows_before <- nrow(filtered)
+          
+          # Split by comma for multiple search terms
+          search_terms <- trimws(unlist(strsplit(search_input, ",")))
+          search_terms <- search_terms[nchar(search_terms) > 0]
+          
+          if (length(search_terms) > 0) {
+            # Create pattern for case-insensitive partial matching
+            search_pattern <- paste0("(?i)", paste(search_terms, collapse = "|"))
+            
+            # Apply filter based on mode (keep or remove)
+            if (is.null(search_mode) || search_mode == "keep") {
+              # Keep matches (default behavior)
+              filtered <- filtered %>%
+                filter(str_detect(!!sym(col), search_pattern) | is.na(!!sym(col)))
+              
+              rows_after <- nrow(filtered)
+              if (rows_before != rows_after) {
+                filter_messages[[length(filter_messages) + 1]] <- 
+                  paste0(str_to_title(str_replace_all(col, "_", " ")), 
+                         " search (keep): ", rows_before - rows_after, " rows removed (keeping '", 
+                         paste(search_terms, collapse = ", "), "')")
+              }
+            } else {
+              # Remove matches
+              filtered <- filtered %>%
+                filter(!str_detect(!!sym(col), search_pattern) | is.na(!!sym(col)))
+              
+              rows_after <- nrow(filtered)
+              if (rows_before != rows_after) {
+                filter_messages[[length(filter_messages) + 1]] <- 
+                  paste0(str_to_title(str_replace_all(col, "_", " ")), 
+                         " search (remove): ", rows_before - rows_after, " rows removed (excluding '", 
+                         paste(search_terms, collapse = ", "), "')")
+              }
+            }
+          }
         }
       }
+      
+      # Stop if no rows left
+      if (nrow(filtered) == 0) break
     }
     
-    # Apply numeric filters using dplyr (only if we still have rows)
+    # Apply numeric filters (only if we still have rows)
     if (nrow(filtered) > 0) {
       num_cols <- names(data)[sapply(data, is.numeric)]
       for (col in num_cols) {
         if (sum(!is.na(data[[col]])) > 0) {
           range_input <- input[[paste0(col, "_range")]]
           if (!is.null(range_input) && length(range_input) == 2) {
-            any_filters_applied <- TRUE
-            filtered <- filtered %>% 
-              filter(between(!!sym(col), range_input[1], range_input[2]) | is.na(!!sym(col)))
+            rows_before <- nrow(filtered)
+            
+            # Get the original range to check if filter is active
+            original_range <- range(data[[col]], na.rm = TRUE)
+            
+            if (range_input[1] > original_range[1] || range_input[2] < original_range[2]) {
+              filtered <- filtered %>% 
+                filter(between(!!sym(col), range_input[1], range_input[2]) | is.na(!!sym(col)))
+              
+              rows_after <- nrow(filtered)
+              if (rows_before != rows_after) {
+                filter_messages[[length(filter_messages) + 1]] <- 
+                  paste0(str_to_title(str_replace_all(col, "_", " ")), 
+                         " range: ", rows_before - rows_after, " rows removed")
+              }
+            }
           }
         }
       }
     }
     
+    # Store filter messages as an attribute
+    attr(filtered, "filter_messages") <- filter_messages
+    
     return(filtered)
   })
   
-  
-  # NEW: Reset filters
+  # UPDATED Reset filters to handle search boxes
   observeEvent(input$reset_filters, {
     req(joined_data())
     
@@ -813,10 +940,24 @@ server <- function(input, output, session) {
     for (col in char_cols) {
       unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
       if (length(unique_vals) <= 20) {
+        # Reset checkbox filters
         updateCheckboxGroupInput(
           session,
           paste0(col, "_filter"),
           selected = unique_vals
+        )
+      } else {
+        # Reset search filters
+        updateTextInput(
+          session,
+          paste0(col, "_search"),
+          value = ""
+        )
+        # Reset search mode to "keep"
+        updateRadioButtons(
+          session,
+          paste0(col, "_search_mode"),
+          selected = "keep"
         )
       }
     }

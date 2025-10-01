@@ -132,7 +132,15 @@ ui <- fluidPage(
       
       sidebarLayout(
         sidebarPanel(
-          fileInput("sample_files", "Upload Sample-concentration CSV From Step 2", accept = ".csv"),
+          tags$div(
+            fileInput("sample_files", "Upload Sample-concentration CSV From Step 2", accept = ".csv"),
+            tags$p(style = "margin-top: -20px; margin-bottom: 15px; font-size: 12px; color: #777;",
+                   "Required columns:",
+                   br(), "• 'quant_stage' (indicates original/requant)",
+                   br(), "• 'dna_extract_id' or 'dna_extract_tube_id'", 
+                   br(), "• 'ng_per_ul_mean' or 'pg_per_ul_mean' (concentration)",
+                   br(), "Optional: 'sample_type' (for categorization)")
+          ),
           
           checkboxInput("pooling", "Pooling", value = FALSE),
           
