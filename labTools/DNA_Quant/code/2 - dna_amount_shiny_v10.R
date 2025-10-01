@@ -729,82 +729,77 @@ server <- function(input, output, session) {
   })
   
   # NEW: Filtered data reactive
-  # Replace your existing filtered_data() reactive with this:
-  
   filtered_data <- reactive({
     req(joined_data())
     
     data <- joined_data()
-    original_nrow <- nrow(data)
     
-    tryCatch({
-      # Start with all data
-      filtered <- data
-      
-      # Apply character/factor filters using dplyr
-      char_cols <- names(data)[sapply(data, function(x) is.character(x) || is.factor(x))]
-      for (col in char_cols) {
-        # Only apply filter if this column has a checkbox control
-        unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
-        if (length(unique_vals) <= 20) {  # Only columns with checkbox controls
-          filter_input <- input[[paste0(col, "_filter")]]
-          
-          if (is.null(filter_input)) {
-            # NULL means all checkboxes unchecked - filter out everything
-            filtered <- filtered %>% slice(0)
-            break
-          } else if (length(filter_input) == 0) {
-            # Empty vector - also filter out everything
-            filtered <- filtered %>% slice(0)
-            break
-          } else {
-            # Normal filtering when some values are selected
-            filtered <- filtered %>% 
-              filter(!!sym(col) %in% filter_input | is.na(!!sym(col)))
-          }
+    # Start with all data  
+    filtered <- data
+    
+    # Track if any filters have been applied
+    any_filters_applied <- FALSE
+    
+    # Check if we're in initial load state (all filters are NULL)
+    # by looking at all checkbox filters
+    char_cols <- names(data)[sapply(data, function(x) is.character(x) || is.factor(x))]
+    all_filters_null <- TRUE
+    for (col in char_cols) {
+      unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
+      if (length(unique_vals) <= 20) {
+        if (!is.null(input[[paste0(col, "_filter")]])) {
+          all_filters_null <- FALSE
+          break
         }
       }
-      
-      # Apply numeric filters using dplyr (only if we still have rows)
-      if (nrow(filtered) > 0) {
-        num_cols <- names(data)[sapply(data, is.numeric)]
-        for (col in num_cols) {
+    }
+    
+    # Apply character/factor filters using dplyr
+    for (col in char_cols) {
+      unique_vals <- sort(unique(data[[col]], na.rm = TRUE))
+      if (length(unique_vals) <= 20) {  # Only columns with checkbox controls
+        filter_id <- paste0(col, "_filter")
+        filter_input <- input[[filter_id]]
+        
+        # Skip if filter UI hasn't been created yet (NULL on first render)
+        # BUT only skip if ALL filters are NULL (initial state)
+        if (is.null(filter_input) && all_filters_null) {
+          next
+        }
+        
+        # Filter has been created or we're past initial load
+        any_filters_applied <- TRUE
+        
+        # Treat NULL as empty selection if we're past initial load
+        if (is.null(filter_input) || length(filter_input) == 0) {
+          # Empty vector OR NULL after init - user unchecked all boxes, filter out everything
+          filtered <- filtered %>% slice(0)
+          break
+        } else {
+          # Normal filtering when some values are selected
+          filtered <- filtered %>% 
+            filter(!!sym(col) %in% filter_input | is.na(!!sym(col)))
+        }
+      }
+    }
+    
+    # Apply numeric filters using dplyr (only if we still have rows)
+    if (nrow(filtered) > 0) {
+      num_cols <- names(data)[sapply(data, is.numeric)]
+      for (col in num_cols) {
+        if (sum(!is.na(data[[col]])) > 0) {
           range_input <- input[[paste0(col, "_range")]]
           if (!is.null(range_input) && length(range_input) == 2) {
+            any_filters_applied <- TRUE
             filtered <- filtered %>% 
               filter(between(!!sym(col), range_input[1], range_input[2]) | is.na(!!sym(col)))
           }
         }
       }
-      
-      # Debug information
-      final_nrow <- nrow(filtered)
-      print(paste("DEBUG: Original rows:", original_nrow, "Final rows:", final_nrow))
-      
-      if (final_nrow == 0 && original_nrow > 0) {
-        showNotification(
-          paste("All", original_nrow, "rows filtered out. No data matches filter criteria."), 
-          type = "warning",
-          duration = NULL,
-          closeButton = TRUE
-        )
-      }
-      
-      return(filtered)
-      
-    }, error = function(e) {
-      print(paste("ERROR in filtering:", e$message))
-      showNotification(
-        paste("Error in filtering:", e$message), 
-        type = "error",
-        duration = NULL,
-        closeButton = TRUE
-      )
-      # Return empty tibble with same structure
-      return(data %>% slice(0))
-    })
+    }
+    
+    return(filtered)
   })
-  
   
   
   # NEW: Reset filters
@@ -840,19 +835,55 @@ server <- function(input, output, session) {
     }
   })
   
+  observe({
+    req(filtered_data())
+    
+    filter_messages <- attr(filtered_data(), "filter_messages")
+    
+    if (length(filter_messages) > 0) {
+      # Combine all messages
+      combined_message <- paste(filter_messages, collapse = "\n")
+      
+      # Show notification with all filter effects
+      showNotification(
+        combined_message,
+        type = "message",
+        duration = 5,
+        closeButton = TRUE
+      )
+    }
+  })
+  
   # NEW: Filter summary
   output$filter_summary <- renderText({
-    req(joined_data(), filtered_data())
+    req(joined_data())
+    
+    # Get filtered data
+    filtered <- filtered_data()
     
     original_rows <- nrow(joined_data())
-    filtered_rows <- nrow(filtered_data())
+    filtered_rows <- nrow(filtered)
     
-    paste0(
+    # Get filter messages for detailed summary
+    filter_messages <- attr(filtered, "filter_messages")
+    
+    summary_text <- paste0(
       "Original data: ", original_rows, " rows\n",
       "Filtered data: ", filtered_rows, " rows\n",
       "Rows removed: ", original_rows - filtered_rows, " (", 
       round((original_rows - filtered_rows) / original_rows * 100, 1), "%)"
     )
+    
+    # Add warning if all data filtered out
+    if (filtered_rows == 0) {
+      summary_text <- paste0(
+        summary_text, "\n\n",
+        "⚠️ WARNING: All data filtered out!\n",
+        "Adjust filters to see data."
+      )
+    }
+    
+    summary_text
   })
   
   # Data status indicator
@@ -880,18 +911,12 @@ server <- function(input, output, session) {
   
   # NEW: Render filtered table
   output$filtered_table <- DT::renderDT({
+    req(joined_data())
+    
     data <- filtered_data()
     
-    # Handle empty data case
-    if (nrow(data) == 0) {
-      # Create an empty data frame with message
-      empty_df <- data.frame(
-        Message = "No data matches the current filter criteria. Please adjust your filters.",
-        stringsAsFactors = FALSE
-      )
-      return(empty_df)
-    }
-    
+    # Return the data as-is, even if empty
+    # DT will show "No data available in table" automatically for empty data frames
     data
   }, options = list(scrollX = TRUE, pageLength = 25))
   
