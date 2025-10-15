@@ -357,7 +357,6 @@ ui <- fluidPage(
                      actionButton("load_data", "Load Data"),
                      uiOutput("data_status")
                    ),
-                   ),
                    mainPanel(
                      # Desktop instructions (appears in main panel on larger screens)
                      div(class = "instructions-desktop instructions-box",
