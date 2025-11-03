@@ -676,7 +676,6 @@ ui <- fluidPage(
                      br(), "Optional: 'volume' (default: 1µL samples, 5µL standards)")
             ),
             actionButton("load_data", "Load Data"),
-            actionButton("load_data", "Load Data"),
             uiOutput("data_status"),
             br(),  
             br(),  
@@ -1008,11 +1007,17 @@ server <- function(input, output, session) {
     req(data_all(), input$selected_standards)
     req(input$x_var != "", input$y_var != "")
     
+    data_all <- data_all()
+    # write_rds(data_all(), 'data_all.rds')
+    # write_rds(input$x_var, 'x_var.rds')
+    # write_rds(input$y_var, 'y_var.rds')
+    # write_rds(input$selected_standards, 'selected_standards.rds')
+    
     # Parse selected standards
     expanded_rows <- parse_number_range(input$selected_standards)
     
     # Check which parsed numbers are actually valid
-    valid_mask <- expanded_rows %in% seq_len(nrow(data_all()))
+    valid_mask <- expanded_rows %in% seq_len(nrow(data_all))
     
     # Filter to valid row indices
     expanded_rows <- expanded_rows[valid_mask]
@@ -1021,8 +1026,8 @@ server <- function(input, output, session) {
     if (length(expanded_rows) == 0) {
       
       # Show what rows DO exist that contain standards
-      if (!is.null(data_all()) && nrow(data_all()) > 0) {
-        std_rows <- which(tolower(data_all()$plate_id) == "standard")
+      if (!is.null(data_all) && nrow(data_all) > 0) {
+        std_rows <- which(tolower(data_all$plate_id) == "standard")
         
         if (length(std_rows) > 0) {
           showNotification(
@@ -1046,7 +1051,7 @@ server <- function(input, output, session) {
       return(empty_df)
     }
     
-    df <- data_all()[expanded_rows, , drop = FALSE]
+    df <- data_all[expanded_rows, , drop = FALSE]
     
     # Parse standards to drop
     drop_indices <- parse_number_range(input$drop_standards)
@@ -1111,6 +1116,8 @@ server <- function(input, output, session) {
     if (!first_model_fit_done()) {
       req(input$drop_standards)
     }
+    
+    # write_rds(standards_data(), 'test.rds')
     
     df_model <- standards_data() %>% filter(included_in_model == "Yes")
     df_model <- as.data.frame(df_model)
