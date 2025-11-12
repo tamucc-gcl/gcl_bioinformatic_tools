@@ -141,7 +141,7 @@ join_quants_map <- function(map_data = dna_plate_map, quant_data = quant_plates,
   tryCatch({
     # write_rds(map_data, 'map_data.rds')
     # write_rds(quant_data, 'quant_data.rds')
-    
+
     join_vars <- identify_join_cols(map_data, quant_data)
     
     out <- inner_join(map_data,
