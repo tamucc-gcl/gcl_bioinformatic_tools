@@ -276,9 +276,7 @@ Server logs are located at: `/var/log/shiny-server/`
 	  ```
 	 - [`server_setup_helpers/r_packages.R`](server_setup_helpers/r_packages.R)
 3. Check `http://<server ip address>:3838` to confirm server is working
-4. 
-3. **Copy applications** to individual folders in `/srv/shiny-server/`
-4. **Deploy landing page:** Copy `index.html` to `/srv/shiny-server/DNA_Quantification/`
+4. **Follow [setup-instructions](server_setup_helpers/setup_server.sh)**
 
 </details>
 
