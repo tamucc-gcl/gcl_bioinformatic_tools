@@ -259,7 +259,16 @@ Server logs are located at: `/var/log/shiny-server/`
 
 ### Hosting on Different Servers
 1. **Install Shiny Server:** Follow [Posit installation guide](https://posit.co/products/open-source/shiny-server/)
+	- There is now a page hosted at `http://<server ip address>:3838`
 2. **Install R packages** for the `shiny-server` user
+	- ```
+		sudo su - shiny
+		R
+		install.packages({PACKAGE})
+	  ```
+	 - [`server_setup_helpers/r_packages.R`](server_setup_helpers/r_packages.R)
+3. Check `http://<server ip address>:3838` to confirm server is working
+4. 
 3. **Copy applications** to individual folders in `/srv/shiny-server/`
 4. **Deploy landing page:** Copy `index.html` to `/srv/shiny-server/DNA_Quantification/`
 
@@ -273,9 +282,9 @@ Server logs are located at: `/var/log/shiny-server/`
 <details>
   <summary>Click to expand</summary>
    
-- **Application 1:** [`code/1 - quantPlate_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/1%20-%20quantPlate_shiny_v3.R)
-- **Application 2:** [`code/2 - dna_amount_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/2%20-%20dna_amount_shiny_v9.R)  
-- **Application 3:** [`code/3 - Normalize_DNA_for_PCR.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/3%20-%20Normalize_DNA_for_PCR_v3.R)
+- **Application 1:** [`code/1 - quantPlate_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/1%20-%20quantPlate_shiny_v4.R)
+- **Application 2:** [`code/2 - dna_amount_shiny.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/2%20-%20dna_amount_shiny_v10.R)  
+- **Application 3:** [`code/3 - Normalize_DNA_for_PCR.R`](https://github.com/tamucc-gcl/gcl_bioinformatic_tools/blob/main/labTools/DNA_Quant/code/3%20-%20Normalize_DNA_for_PCR_v4.R)
 
 </details>
 
