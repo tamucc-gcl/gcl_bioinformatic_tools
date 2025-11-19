@@ -4,7 +4,9 @@ A comprehensive web-based toolkit for DNA quantification analysis, concentration
 
 ## Quick Start
 
-1. **Access the server:** [http://10.5.146.65/DNA_Quantification/](http://10.5.146.65/DNA_Quantification/) 
+1. **Access the server:**
+- [Gawain](http://10.5.146.65/DNA_Quantification/) 
+- [Lancelot](http://10.5.147.78:3838/DNA_Quantification/) 
    > ⚠️ **Network Access Required:** Must be on TAMUCC network or connected via VPN
 
 2. **Run applications in sequence:** Follow the numbered workflow below
@@ -26,7 +28,9 @@ Raw Plate Data → [App 1] → Individual Concentrations → [App 2] → Mean Co
 <details>
   <summary>Click to expand</summary>
    
-**URL:** [`http://10.5.146.65/DNA_Quantification/1-quant_plate/`](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
+**URL:**
+- [Gawain](http://10.5.146.65/DNA_Quantification/1-quant_plate/)
+- [Lancelot](http://10.5.147.78:3838/DNA_Quantification/1-quant_plate/)
 
 ### Purpose
 Process raw fluorescence data from plate readers and calculate DNA concentrations using optimized standard curves.
@@ -64,7 +68,9 @@ Individual DNA concentrations for each well/replicate, ready for statistical ana
 <details>
   <summary>Click to expand</summary>
    
-**URL:** [`http://10.5.146.65/DNA_Quantification/2-DNA_concentration/`](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
+**URL:**
+- [Gawain](http://10.5.146.65/DNA_Quantification/2-DNA_concentration/)
+- [Lancelot](http://10.5.147.78:3838/DNA_Quantification/2-DNA_concentration/)
 
 ### Purpose
 Calculate mean DNA concentrations across replicates using Bayesian statistical models and prepare samples for PCR normalization.
@@ -135,7 +141,9 @@ variance ~ is_control + (1 | sample_id)
 <details>
   <summary>Click to expand</summary>
 
-**URL:** [`http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/`](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/)
+**URL:**
+- [Gawain](http://10.5.146.65/DNA_Quantification/3-DNA_normalization_PCR/)
+- [Lancelot](http://10.5.147.78:3838/DNA_Quantification/3-DNA_normalization_PCR/)
 
 ### Purpose
 Calculate precise transfer volumes and water additions for normalized PCR reactions.

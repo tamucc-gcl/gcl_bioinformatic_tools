@@ -1124,7 +1124,7 @@ server <- function(input, output, session) {
       )
       
       # Create a persistent output directory for the CmdStanR CSV files.
-      if(Sys.info()["nodename"] == 'gawain'){
+      if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
         output_dir <- "model/cmdstan_output"
       } else {
         output_dir <- "./cmdstan_output"
@@ -1137,11 +1137,12 @@ server <- function(input, output, session) {
       # Define the function to run sampling in the background using callr::r_bg.
       sampling_function <- function(data_stan, output_dir, num_chains, iter_sampling, iter_warmup, thin) {
         library(cmdstanr)
-        if(Sys.info()["nodename"] == 'gawain'){
-          set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.36.0')
+        if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
+          set_cmdstan_path(list.dirs('/home/shiny/.cmdstan', recursive = FALSE))
+          
         }
         
-        if(Sys.info()["nodename"] == 'gawain'){
+        if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
           dna_model <- cmdstan_model('model/dna_concentration_threaded.stan',
                                      cpp_options = list(stan_threads = TRUE))
         } else {
