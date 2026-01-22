@@ -1,22 +1,18 @@
 #!/bin/bash
 #SBATCH --job-name=rainbow_bridge    # Job name
-#SBATCH --partition=cpu              # Partition name (change to 'cpu' 360G or 'gpu' 740G as needed)
-#SBATCH --mem=340G                    # Total memory per node (adjust as needed)
+#SBATCH --partition=normal              # Partition name (change to 'cpu' 360G or 'gpu' 740G as needed)
+#SBATCH --mem=30G                    # Total memory per node (adjust as needed)
 #SBATCH --nodes=1                    # Number of nodes
-#SBATCH --ntasks=192                   # Number of tasks (usually 1 for single-job scripts)
+#SBATCH --ntasks=5                   # Number of tasks (usually 1 for single-job scripts)
 #SBATCH --cpus-per-task=1           # Number of CPU cores per task
-#SBATCH --time=2-00:00:00            # Time limit (D-HH:MM:SS)
-#SBATCH --output=rainbow_bridge-%j.out     # Standard output and error log (%j will be replaced by job ID)
-#SBATCH --mail-type=END,FAIL              #Send email on all job events
-#SBATCH --mail-user=@tamucc.edu    #Send all emails to email_address
-##SBATCH --ntasks=8                   #Request 8 tasks
-##SBATCH --ntasks-per-node=2          #Request 2 tasks/cores per node
+#SBATCH --time=4-00:00:00            # Time limit (D-HH:MM:SS)
+#SBATCH --output=logs/rainbow_bridge-%j.out     # Standard output and error log (%j will be replaced by job ID)
 
 ############################
 ### run_rainbow_bride.sh ###
 ############################
 
-# This script runs rainbow_bridge in the TAMU Supercomputer 'Launch'. After logging in, you must enter a computing node in Launch.
+# This script runs rainbow_bridge in the TAMUCC Supercomputer 'Crest'. After logging in, you must enter a computing node in Launch.
 # You will need a reference database, and a barcode decode file if your sequences have not been demultiplex
 
 #----------------------------
@@ -29,12 +25,8 @@
 # sbatch run_rainbow_brigde.sh paired_unmuxed.yml output final
 #----------------------------
 
-# note: I am using NCBI's nucleotide database blastn v2_16_0. You might want to check if a newer version exist in https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-# currently this database lives in '/home/u.eg195763/GCL/databases/ncbi_2_16_0/nt'
-# "nt" is the name of the NCBI's nucleotide database (without file extensions)
-
 # Load necessary modules (Launch - TAMUCC)
-module load GCC/13.2.0 WebProxy rainbow_bridge/2024.07.15
+module load nextflow
 
 # Print SLURM configuration
 #env | grep SLURM
@@ -51,7 +43,10 @@ script_dir=${script_path%/*}
 echo ${script_dir} #TEST
 
 # Initial reporting. Print parameters used
-PARAMSFILE=$1
+#PARAMSFILE=config/paired_LerayXT.yml
+#outdir=test
+
+PARAMSFILE=${1}
 outdir=${2}
 final=${3}
 
@@ -64,16 +59,21 @@ echo "cat $PARAMSFILE"
 cat $PARAMSFILE
 echo ""
 
-
 mkdir -p ${outdir}
 cp ${PARAMSFILE} ${outdir}/
 cd ${outdir}
+PARAMSFILE=$(basename $PARAMSFILE)
 
 # Run rainbow_bridge with desired options
-nextflow run -params-file $PARAMSFILE /scratch/group/p.bio240270.000/software/rainbow_bridge/rainbow_bridge.nf
+nextflow run \
+  -c /work/birdlab/software/rainbow_bridge/crest.config \
+  -profile slurm \
+  -params-file \
+  $PARAMSFILE \
+  /work/birdlab/software/rainbow_bridge/rainbow_bridge/rainbow_bridge.nf
 
 #Summarize and produce various figures of RainbowBridge Outputs
-module load Anaconda3; source activate r_env
+module load Anaconda3; source activate rb_renv
 Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd) ${PARAMSFILE}
 conda deactivate
 

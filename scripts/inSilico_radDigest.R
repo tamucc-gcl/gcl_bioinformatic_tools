@@ -18,7 +18,7 @@ if(!interactive()){
   digestion_protocol <- 'ddrad'
   genome_file <- '~/../Downloads/GCA_034783695.1_ASM3478369v1_genomic.fna'
   restriction_enzymes <- c("NlaIII", 'MluCI')
-  size_window <- c(300, 500)
+  size_window <- c(400, 500)
 }
 
 #### Libraries ####
@@ -116,6 +116,8 @@ processed_digestion <- expand_grid(enzyme1 = restriction_enzymes,
                          RESTRICTION_ENZYMES[c(enzyme1, enzyme2)],
                          # c(cut_site1, cut_site2),
                          digestion_protocol))
+
+write_csv(processed_digestion, 'sardinealla_ddrad_insilico.csv')
 
 #### Outputs ####
 n_fragments <- processed_digestion %>%
