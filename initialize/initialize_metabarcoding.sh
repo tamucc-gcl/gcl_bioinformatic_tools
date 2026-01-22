@@ -5,9 +5,9 @@ dirname=${1}
 
 
 #Scripts
-mkdir -p ${dirname}/scripts
-cp ${master_dir}/scripts/run_rainbowBridge.sh ${dirname}/scripts
-cp ${master_dir}/scripts/summarise_rainbowbridge.R ${dirname}/scripts
+#mkdir -p ${dirname}/scripts
+#cp ${master_dir}/scripts/run_rainbowBridge.sh ${dirname}/scripts
+#cp ${master_dir}/scripts/summarise_rainbowbridge.R ${dirname}/scripts
 
 #Default YAML - need to edit as needed
 cp ${master_dir}/yamls/metabarcode_rainbowbridge_paired.yml ${dirname}
@@ -33,7 +33,10 @@ echo ""
 echo ""
 echo ""
 echo "After above run by cd to ${dirname} and use:"
-echo "sbatch scripts/run_rainbowBridge.sh metabarcode_rainbowbridge_paired.yml intermediate_files"
+#echo "sbatch scripts/run_rainbowBridge.sh metabarcode_rainbowbridge_paired.yml intermediate_files"
+echo "sbatch /work/birdlab/software/rainbow_bridge/run_rainbowBridge.sbatch metabarcode_rainbowbridge_paired.yml intermediate_files"
+echo "Prior to running the first time you will need to build the rainbow bridge summarization conda environment"
+echo "See this file for instructions /work/birdlab/software/rainbow_bridge/README.md"
 echo ""
 echo ""
 echo ""
