@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=MidoriDB    # Job name
-#SBATCH --partition=cpu              # Partition name (change to 'cpu' 360G or 'gpu' 740G as needed)
-#SBATCH --mem=340G                    # Total memory per node (adjust as needed)
+#SBATCH --partition=normal              # Partition name (change to 'cpu' 360G or 'gpu' 740G as needed)
+#SBATCH --mem=60G                    # Total memory per node (adjust as needed)
 #SBATCH --nodes=1                    # Number of nodes
-#SBATCH --ntasks=192                   # Number of tasks (usually 1 for single-job scripts)
+#SBATCH --ntasks=20                   # Number of tasks (usually 1 for single-job scripts)
 #SBATCH --cpus-per-task=1           # Number of CPU cores per task
-#SBATCH --time=2-00:00:00            # Time limit (D-HH:MM:SS)
-#SBATCH --output=midoriDB-%j.out     # Standard output and error log (%j will be replaced by job ID)
+#SBATCH --time=4-00:00:00            # Time limit (D-HH:MM:SS)
+#SBATCH --output=/work/birdlab/databases/logs/midoriDB-%j.out     # Standard output and error log (%j will be replaced by job ID)
 
 
 ############################
@@ -17,25 +17,27 @@
 
 #----------------------------
 # Execute:
-# sbatch download_midoriDB.sh
+# sbatch download_midoriDB.sh {locus}
 #
 # example:
-# sbatch download_midoriDB.sh
+# sbatch download_midoriDB.sh CO1
 #----------------------------
 
-script_dir=/scratch/group/p.bio240270.000/gcl_bioinformatic_tools/scripts
+locus=${1}
+#locus=CO1
+database_dir=/work/birdlab/databases
+script_dir=/work/birdlab/software/gcl_bioinformatic_tools/scripts
 
 #1 - Identify most recently added fasta on MIDORI
-module load WebProxy
-module load Anaconda3; source activate r_env
-midori_url=$(Rscript ${script_dir}/get_midori_url.R)
+module load miniconda3; source activate midori-scraper
+midori_url=$(Rscript ${script_dir}/get_midori_url.R ${locus})
 echo "Downloading: ${midori_url}"
 conda deactivate
 
 #2 - Download the FASTA File
-mkdir -p /scratch/group/p.bio240270.000/databases/midori2_latest
-cd /scratch/group/p.bio240270.000/databases/midori2_latest
-wget -c ${midori_url}
+mkdir -p ${database_dir}/midori2_latest/${locus}
+cd ${database_dir}/midori2_latest/${locus}
+wget --no-check-certificate -c ${midori_url}
 midori_dirty=$(realpath ${midori_url##*/})
 midori_cleaned=${midori_dirty%.fasta.gz}_cleaned.fasta
 
@@ -76,8 +78,8 @@ rm column1 column2 ${midori_dirty}
 #bash ${script_dir}/clean_midoriDB.sh "${midori_cleaned}"
 
 #5 - Format for RainbowBridge
-BLAST=/scratch/group/p.bio240270.000/software/ncbi-blast-latest.img
-singularity exec --bind /scratch,/ztank ${BLAST} \
+BLAST=/work/birdlab/singularity_cache/ncbi-blast-latest.img
+singularity exec --bind /work ${BLAST} \
   makeblastdb -in ${midori_cleaned} \
   -parse_seqids \
   -dbtype nucl \

@@ -1,0 +1,11 @@
+name: midori-scraper
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base>=4.0
+  - r-rvest
+  - r-stringr
+  - r-tibble
+  - r-dplyr
+  - r-lubridate

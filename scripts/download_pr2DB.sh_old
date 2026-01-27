@@ -1,0 +1,268 @@
+#!/bin/bash
+#SBATCH --job-name=prrDB    # Job name
+#SBATCH --partition=normal              # Partition name (change to 'cpu' 360G or 'gpu' 740G as needed)
+#SBATCH --mem=60G                    # Total memory per node (adjust as needed)
+#SBATCH --nodes=1                    # Number of nodes
+#SBATCH --ntasks=20                   # Number of tasks (usually 1 for single-job scripts)
+#SBATCH --cpus-per-task=1           # Number of CPU cores per task
+#SBATCH --time=4-00:00:00            # Time limit (D-HH:MM:SS)
+#SBATCH --output=/work/birdlab/databases/logs/prrDB-%j.out     # Standard output and error log (%j will be replaced by job ID)
+
+###############################################################################
+# User-configurable inputs
+###############################################################################
+LOCUS=SSU                              # SSU (18S), LSU, etc. (as PR2 provides)
+PR2_VERSION=5.1.1               # PR2 release tag/version
+DB_ROOT=/work/birdlab/databases/PR2_latest       # where you store databases
+THREADS=${SLURM_CPUS_PER_TASK}
+
+# PR2 FASTA (UTAX)
+PR2_FASTA_URL=https://github.com/pr2database/pr2database/releases/download/v${PR2_VERSION}/pr2_version_${PR2_VERSION}_${LOCUS}_taxo_long.fasta.gz
+
+# PR2 metadata Excel/TSV/CSV URL (YOU must set to the correct asset for the release)
+# Examples (placeholder): https://.../pr2_version_5.1.1_metadata.xlsx
+PR2_META_URL=https://github.com/pr2database/pr2database/releases/download/v${PR2_VERSION}/pr2_version_${PR2_VERSION}_merged.xlsx
+
+# NCBI accession2taxid URLs
+NCBI_GB_URL="https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz"
+NCBI_WGS_URL="https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz"
+NCBI_DEAD_URL="https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz"
+
+###############################################################################
+# Derived paths
+###############################################################################
+OUTDIR="${DB_ROOT}/${LOCUS}"
+mkdir -p "${OUTDIR}"
+cd "${OUTDIR}"
+
+PR2_FASTA_GZ="$(basename "${PR2_FASTA_URL}")"
+PR2_FASTA_CLEANED="${PR2_FASTA_GZ%.fasta.gz}_cleaned.fasta"
+
+# Metadata local name (if URL set)
+PR2_META_FILE="$(basename "${PR2_META_URL}")"
+PR2_TAXO_TSV="pr2_accession__to__pr2_taxonomy.tsv"
+
+# Mapping outputs
+PR2_TO_GB_TSV="pr2_accession__to__genbank_accession.tsv"  # 2 columns: pr2_accession<TAB>gb_accver
+GB_ACC_LIST="gb_accessions.all.txt"                       # unique gb accessions from metadata
+ACC2TAXID_TSV="gb_accver__to__taxid.tsv"                  # 2 cols: gb_accver<TAB>taxid
+TAXID_MAP="taxid_map.tsv"                                 # 2 cols: pr2_accession<TAB>taxid
+
+BLASTDB_PREFIX="pr2_latest"
+
+###############################################################################
+# 1. Download fasta formatted PR2 database.
+###############################################################################
+echo "[1/7] Download PR2 FASTA: ${PR2_FASTA_URL}"
+wget -c -O "${PR2_FASTA_GZ}" "${PR2_FASTA_URL}"
+
+###############################################################################
+# 2. Download excel associated with that database version
+###############################################################################
+echo "[2/7] Download PR2 metadata: ${PR2_META_URL}"
+wget -c -O "${PR2_META_FILE}" "${PR2_META_URL}"
+
+###############################################################################
+# 3. Clean fasta file headers (taxo_long format)
+#    Input header example:
+#      >AB353770.1.1740_U|18S_rRNA|nucleus||Eukaryota|TSAR|Alveolata|...
+#    Output header:
+#      >AB353770.1.1740_U
+###############################################################################
+echo "[3/7] Clean FASTA headers (taxo_long) -> ${PR2_FASTA_CLEANED}"
+
+zcat "${PR2_FASTA_GZ}" \
+| awk -F'|' '
+  BEGIN{OFS="|"}
+  /^>/{
+    # remove leading ">"
+    sub(/^>/,"",$1)
+    seqid=$1
+    print ">"seqid
+    next
+  }
+  {print}
+' > "${PR2_FASTA_CLEANED}"
+
+echo "  sequences in cleaned FASTA: $(grep -c "^>" "${PR2_FASTA_CLEANED}")"
+
+###############################################################################
+# 3b (optional). Extract PR2 taxonomy from taxo_long headers
+#    Creates: pr2_accession__to__pr2_taxonomy.tsv
+###############################################################################
+echo "[3b/7 optional] Extract taxonomy from headers -> ${PR2_TAXO_TSV}"
+
+zcat "${PR2_FASTA_GZ}" \
+| awk -F'|' '
+  BEGIN{OFS="\t"}
+  /^>/{
+    sub(/^>/,"",$1)
+    seqid=$1
+
+    # Based on examples:
+    # 1: seqid
+    # 2: gene (e.g. 18S_rRNA)
+    # 3: compartment (e.g. nucleus)
+    # 4: optional strain / info (can be empty)
+    # 5..: taxonomy ranks (Eukaryota | TSAR | ... | genus | species)
+    tax=""
+    for(i=5;i<=NF;i++){
+      tax = (tax=="" ? $i : tax ";" $i)
+    }
+    print seqid, tax
+    next
+  }
+' > "${PR2_TAXO_TSV}"
+
+echo "  taxonomy rows: $(wc -l < "${PR2_TAXO_TSV}")"
+
+###############################################################################
+# 4. Extract the columns with the PR2 accession and Genbank Accession
+#    We use R to robustly read Excel/CSV and output a 2-column TSV:
+#      pr2_accession<TAB>gb_accver
+###############################################################################
+echo "[4/7] Parse metadata -> ${PR2_TO_GB_TSV}"
+
+module load miniconda3
+source activate r_env_pr2
+
+Rscript --vanilla - "$PR2_META_FILE" "$PR2_TO_GB_TSV" <<'RSCRIPT'
+args <- commandArgs(trailingOnly=TRUE)
+meta_file <- args[1]
+out_tsv   <- args[2]
+message("meta_file = ", meta_file)
+message("out_tsv   = ", out_tsv)
+
+readxl::read_excel(meta_file, 
+                   col_types = 'text') |>
+  dplyr::distinct(pr2_accession, 
+                  genbank_accession) |>
+  readr::write_tsv(out_tsv, 
+                   col_names = FALSE)
+RSCRIPT
+
+echo "  pairs in ${PR2_TO_GB_TSV}: $(wc -l < "${PR2_TO_GB_TSV}")"
+
+###############################################################################
+# 5. Get taxonomy ID from GenBank accession (and WGS stems) from PR2 metadata
+#    IMPORTANT: PR2 "GenBank accession" column is typically *accession-only*
+#    (e.g. AB012059) NOT accession.version. Also includes WGS stems (AAAA02002154)
+#    and a few pseudo PR2 IDs (8FVY_2, 8TPU_SA) that will NOT exist in NCBI.
+#
+#    Strategy:
+#      - Split metadata keys into:
+#          (a) GB accession-only:     ^[A-Z]{1,2}[0-9]{5,8}$
+#          (b) WGS project stems:     ^[A-Z]{4}[0-9]{8}$
+#          (c) pseudo/other:          everything else (handled later via fallback)
+#      - Map (a) using nucl_gb + dead_nucl (COLUMN 1 = accession)
+#      - Map (b) using nucl_wgs (COLUMN 1 = WGS stem)
+#      - Combine into ACC2TAXID_TSV with first-hit-wins
+###############################################################################
+echo "[5/7] Download NCBI accession2taxid files (if needed)"
+wget -c -O nucl_gb.accession2taxid.gz   "${NCBI_GB_URL}"
+wget -c -O nucl_wgs.accession2taxid.gz  "${NCBI_WGS_URL}"
+wget -c -O dead_nucl.accession2taxid.gz "${NCBI_DEAD_URL}"
+
+# 5.1 list all unique "GenBank" keys from metadata (field 2 of PR2_TO_GB_TSV)
+# NOTE: despite the name, these may include GB accessions, WGS stems, and pseudo ids
+cut -f2 "${PR2_TO_GB_TSV}" | awk 'NF{print $1}' | sort -u > "${GB_ACC_LIST}"
+echo "  unique metadata keys (gb/wgs/pseudo mixed): $(wc -l < "${GB_ACC_LIST}")"
+
+# 5.2 split into GB accession-only, WGS stems, and everything else
+grep -E '^[A-Z]{1,2}[0-9]{5,8}$' "${GB_ACC_LIST}" > pr2_meta.gb_accessions || true
+grep -E '^[A-Z]{4}[0-9]{8}$'     "${GB_ACC_LIST}" > pr2_meta.wgs_stems    || true
+grep -Ev '(^[A-Z]{1,2}[0-9]{5,8}$|^[A-Z]{4}[0-9]{8}$)' "${GB_ACC_LIST}" > pr2_meta.other_keys || true
+
+echo "  gb accession-only keys: $(wc -l < pr2_meta.gb_accessions)"
+echo "  wgs stem keys:          $(wc -l < pr2_meta.wgs_stems)"
+echo "  other/pseudo keys:      $(wc -l < pr2_meta.other_keys)"
+
+# helper: filter accession2taxid file using keep list against COLUMN 1 (accession)
+extract_taxid_from_col1() {
+  local acc2taxid_gz="$1"
+  local keep_list="$2"
+  zcat "${acc2taxid_gz}" \
+  | awk -F'\t' 'NR==FNR{keep[$1]=1; next} NR>1 && keep[$1]{print $1"\t"$3}' \
+      "${keep_list}" -
+}
+
+# 5.3 Map GB accession-only keys using nucl_gb (column 1)
+echo "  mapping GB accessions from nucl_gb (column 1)..."
+extract_taxid_from_col1 nucl_gb.accession2taxid.gz pr2_meta.gb_accessions \
+| awk '!seen[$1]++' \
+> acc2taxid.from_nucl_gb.tsv
+
+# 5.4 Mop up remaining GB accessions using dead_nucl (column 1)
+cut -f1 acc2taxid.from_nucl_gb.tsv | sort -u > pr2_meta.gb.mapped || true
+comm -23 <(sort -u pr2_meta.gb_accessions) pr2_meta.gb.mapped > pr2_meta.gb.missing || true
+
+echo "  GB accessions unmapped after nucl_gb: $(wc -l < pr2_meta.gb.missing)"
+echo "  mapping remaining GB accessions from dead_nucl (column 1)..."
+extract_taxid_from_col1 dead_nucl.accession2taxid.gz pr2_meta.gb.missing \
+| awk '!seen[$1]++' \
+> acc2taxid.from_dead_nucl.tsv
+
+# 5.5 Map WGS stems using nucl_wgs (column 1 = stem)
+echo "  mapping WGS stems from nucl_wgs (column 1)..."
+extract_taxid_from_col1 nucl_wgs.accession2taxid.gz pr2_meta.wgs_stems \
+| awk '!seen[$1]++' \
+> acc2taxid.from_nucl_wgs.tsv
+
+# 5.6 Combine mappings (first hit wins; order preference: nucl_gb > dead_nucl > nucl_wgs)
+cat acc2taxid.from_nucl_gb.tsv acc2taxid.from_dead_nucl.tsv acc2taxid.from_nucl_wgs.tsv \
+| awk '!seen[$1]++' \
+> "${ACC2TAXID_TSV}"
+
+echo "  mapped key->taxid: $(wc -l < "${ACC2TAXID_TSV}") / $(wc -l < "${GB_ACC_LIST}")"
+echo "    (GB mapped:  $(wc -l < acc2taxid.from_nucl_gb.tsv) + $(wc -l < acc2taxid.from_dead_nucl.tsv))"
+echo "    (WGS mapped: $(wc -l < acc2taxid.from_nucl_wgs.tsv))"
+
+
+###############################################################################
+# 6. Build taxid_map file (PR2 accession -> taxid)
+#    Join:
+#      PR2_TO_GB_TSV:   pr2_accession <TAB> key   (key=GB accession OR WGS stem OR pseudo)
+#      ACC2TAXID_TSV:   key          <TAB> taxid
+#    Output:
+#      TAXID_MAP:       pr2_accession <TAB> taxid
+###############################################################################
+echo "[6/7] Build taxid_map: ${TAXID_MAP}"
+
+# join needs sorted inputs
+sort -k2,2 "${PR2_TO_GB_TSV}"   > pr2_to_key.sorted.tsv     # sort by key (field 2)
+sort -k1,1 "${ACC2TAXID_TSV}"   > key2taxid.sorted.tsv      # sort by key (field 1)
+
+# join: (pr2, key) joined with (key, taxid) => output pr2, taxid
+join -t $'\t' -1 2 -2 1 \
+  pr2_to_key.sorted.tsv \
+  key2taxid.sorted.tsv \
+| awk -F'\t' '{print $1"\t"$3}' \
+| awk '!seen[$1]++' \
+> "${TAXID_MAP}"
+
+echo "  taxid_map entries: $(wc -l < "${TAXID_MAP}")"
+echo "  cleaned FASTA entries: $(grep -c '^>' "${PR2_FASTA_CLEANED}")"
+echo "  missing taxid_map entries (FASTA - map): $(( $(grep -c '^>' "${PR2_FASTA_CLEANED}") - $(wc -l < "${TAXID_MAP}") ))"
+
+# Optional diagnostics to see what kinds of keys remain unmapped (good for later fallback step)
+cut -f2 "${PR2_TO_GB_TSV}" | sort -u > pr2_keys.all
+cut -f1 "${ACC2TAXID_TSV}" | sort -u > pr2_keys.mapped
+comm -23 pr2_keys.all pr2_keys.mapped > pr2_keys.unmapped
+
+echo "  unmapped metadata keys (for fallback): $(wc -l < pr2_keys.unmapped)"
+head -n 10 pr2_keys.unmapped | sed 's/^/    /'
+
+
+###############################################################################
+# 7. Create blast database from taxid_map file and cleaned fasta file.
+###############################################################################
+echo "[7/7] Build BLAST database with makeblastdb"
+# Requires BLAST+ installed and available in PATH (makeblastdb)
+makeblastdb \
+  -in "${PR2_FASTA_CLEANED}" \
+  -dbtype nucl \
+  -parse_seqids \
+  -taxid_map "${TAXID_MAP}" \
+  -out "${BLASTDB_PREFIX}"
+
+echo "DONE. BLASTDB prefix: ${OUTDIR}/${BLASTDB_PREFIX}"
