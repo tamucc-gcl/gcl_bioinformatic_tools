@@ -6,8 +6,8 @@ if(!interactive()){
   param_yaml <- args[2]
   .libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 } else {
-  rainbowbridge_dir <- '/scratch/group/p.bio240270.000/prj_sheehy-metabarcoding/testing_highPIDENT_DIFF_lowerPIDENT/'
-  param_yaml <- 'metabarcode_rainbowbridge_paired.yml'
+  rainbowbridge_dir <- '/work/birdlab/GCL/prj_bird_rota_blue_damselfly_metabarcoding/intermediate_files/LerayXT'
+  param_yaml <- 'paired_LerayXT.yml'
 }
 
 setwd(rainbowbridge_dir)
@@ -649,11 +649,23 @@ zotus_updated <- left_join(zotus_final,
 write_csv(zotus_updated, 'zotu_table.csv')
 
 taxa_table <- summarise(zotus_final,
-                        across(c(where(is.numeric), -unique_hits), 
+                        across(c(where(is.numeric), -unique_hits, -taxid), 
                                sum),
                         n_zotu = n_distinct(zotu),
                         .by = c(domain:species)) %>%
-  relocate(n_zotu, .after = taxid)
+  relocate(n_zotu, .after = species) %>%
+  left_join(select(zotus_final, zotu, domain:species) %>%
+              left_join(select(blast_hits, zotu, pident, qcov, evalue),
+                        by = 'zotu') %>%
+              summarise(across(c(where(is.numeric)),
+                               c(mean = mean, 
+                                 median = median,
+                                 min = min,
+                                 max = max)),
+                        .by = c(domain:species)),
+            by = join_by(domain, kingdom, phylum, class, order, family, genus, species)) %>%
+  relocate(c(starts_with('pident'), starts_with('qcov'), starts_with('evalue')),
+           .after = n_zotu)
 write_csv(taxa_table, 'lowest_taxonomy_table.csv')
 
 #### Output Files with metadata for zOTU and lowest taxonomy tables ####
