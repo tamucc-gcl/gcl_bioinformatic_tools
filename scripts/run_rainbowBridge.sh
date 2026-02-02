@@ -26,7 +26,7 @@
 #----------------------------
 
 # Load necessary modules (Launch - TAMUCC)
-module load nextflow
+module load nextflow; module load miniconda3
 
 # Print SLURM configuration
 #env | grep SLURM
@@ -40,7 +40,7 @@ echo ""
 #script_path=$(scontrol show job $SLURM_JOB_ID | awk -F= '/Command=/{print $3}')
 script_path=$(scontrol show job $SLURM_JOB_ID | awk -F'=' '/Command=/{print $2}')
 script_dir=${script_path%/*}
-echo ${script_dir} #TEST
+# echo ${script_dir} #TEST
 
 # Initial reporting. Print parameters used
 #PARAMSFILE=config/paired_LerayXT.yml
@@ -73,7 +73,7 @@ nextflow run \
   /work/birdlab/software/rainbow_bridge/rainbow_bridge/rainbow_bridge.nf
 
 #Summarize and produce various figures of RainbowBridge Outputs
-module load Anaconda3; source activate rb_renv
+source activate rb_renv
 Rscript ${script_dir}/summarise_rainbowbridge.R $(pwd) ${PARAMSFILE}
 conda deactivate
 
