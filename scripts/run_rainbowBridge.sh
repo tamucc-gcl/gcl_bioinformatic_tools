@@ -5,7 +5,7 @@
 #SBATCH --nodes=1                    # Number of nodes
 #SBATCH --ntasks=5                   # Number of tasks (usually 1 for single-job scripts)
 #SBATCH --cpus-per-task=1           # Number of CPU cores per task
-#SBATCH --time=4-00:00:00            # Time limit (D-HH:MM:SS)
+#SBATCH --time=10-00:00:00            # Time limit (D-HH:MM:SS)
 #SBATCH --output=logs/rainbow_bridge-%j.out     # Standard output and error log (%j will be replaced by job ID)
 
 ############################
