@@ -11,6 +11,7 @@ if(!interactive()){
   genome_file <- args[3]
   restriction_enzymes <- args[4] #Named following New England Biolabs Naming
   size_window <- as.integer(args[5])
+  bin_width <- as.integer(args[5])
   
   # .libPaths(.libPaths()[grep(pattern = 'conda', .libPaths())]) #Fix strange bug with sbatch jobs
 } else {
@@ -19,6 +20,7 @@ if(!interactive()){
   genome_file <- '~/../Downloads/GCA_034783695.1_ASM3478369v1_genomic.fna'
   restriction_enzymes <- c("NlaIII", 'MluCI')
   size_window <- c(400, 500)
+  bin_width <- 25
 }
 
 #### Libraries ####
@@ -153,6 +155,20 @@ processed_digestion %>%
   theme(panel.background = element_rect(colour = 'black'),
         strip.background = element_blank(),
         plot.title = element_markdown())
+
+processed_digestion %>%
+  filter(frag_length > 350,
+         frag_length < 650) %>%
+  mutate(bin_lwr = floor(frag_length / bin_width) * bin_width,
+         bin_upr = bin_lwr + bin_width) %>%
+  mutate(enzyme_pair = str_c(enzyme1, enzyme2, sep = '.'),
+         frag_bin = str_c(bin_lwr, bin_upr, sep = '-'),
+         .keep = 'unused') %>%
+  summarise(.by = c(enzyme_pair, frag_bin),
+            n_frag = n()) %>%
+  pivot_wider(names_from = enzyme_pair,
+              values_from = n_frag) %>%
+  arrange(frag_bin)
 
 processed_digestion %>%
   filter(frag_length > 200,

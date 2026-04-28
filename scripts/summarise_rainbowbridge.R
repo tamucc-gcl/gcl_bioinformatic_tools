@@ -453,6 +453,11 @@ summarized_blast_plot <- select(zotus_final,
                                         'Class', 'Order', 'Family',
                                         'Genus', 'Species'))) %>%
   ggplot(aes(y = mean_value, x = taxid_rank)) +
+  geom_hline(data = tibble(metric = c('pident', 'qcov'),
+                           level = c(0.97, NA_real_)),
+             aes(yintercept = level),
+             linetype = 'dashed',
+             colour = 'gray') +
   geom_col() +
   geom_errorbar(aes(ymin = mean_value - sd_value,
                     ymax = mean_value + sd_value),
@@ -586,6 +591,11 @@ blast_classification_plot <- sample_composition %>%
                                         'Class', 'Order', 'Family',
                                         'Genus', 'Species'))) %>%
   ggplot(aes(x = mean_value, y = lowest_level)) +
+  geom_vline(data = tibble(metric = c('pident', 'pident', 'qcov'),
+                           level = c(0.9, 0.97, NA_real_)),
+             aes(xintercept = level),
+             linetype = 'dashed',
+             colour = 'gray') +
   geom_col() +
   geom_errorbar(aes(xmin = mean_value - sd_value,
                     xmax = mean_value + sd_value),
