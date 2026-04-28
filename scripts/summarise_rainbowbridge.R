@@ -454,7 +454,7 @@ summarized_blast_plot <- select(zotus_final,
                                         'Genus', 'Species'))) %>%
   ggplot(aes(y = mean_value, x = taxid_rank)) +
   geom_hline(data = tibble(metric = c('pident', 'qcov'),
-                           level = c(0.97, NA_real_)),
+                           level = c(97, NA_real_)),
              aes(yintercept = level),
              linetype = 'dashed',
              colour = 'gray') +
@@ -592,7 +592,7 @@ blast_classification_plot <- sample_composition %>%
                                         'Genus', 'Species'))) %>%
   ggplot(aes(x = mean_value, y = lowest_level)) +
   geom_vline(data = tibble(metric = c('pident', 'pident', 'qcov'),
-                           level = c(0.9, 0.97, NA_real_)),
+                           level = c(90, 97, NA_real_)),
              aes(xintercept = level),
              linetype = 'dashed',
              colour = 'gray') +
@@ -600,6 +600,9 @@ blast_classification_plot <- sample_composition %>%
   geom_errorbar(aes(xmin = mean_value - sd_value,
                     xmax = mean_value + sd_value),
                 width = 0.5) +
+  scale_x_continuous(limits = c(0, 100),
+                     breaks = c(0, 25, 50, 75, 100),
+                     labels = c(0, 25, 50, 75, 100))
   facet_grid(taxid_rank ~ metric,
              scales = 'free_y',
              space = 'free_y',
