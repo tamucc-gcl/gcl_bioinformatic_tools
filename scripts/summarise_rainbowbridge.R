@@ -600,7 +600,7 @@ blast_classification_plot <- sample_composition %>%
   geom_errorbar(aes(xmin = mean_value - sd_value,
                     xmax = mean_value + sd_value),
                 width = 0.5) +
-  scale_x_continuous(limits = c(0, 100),
+  scale_x_continuous(#limits = c(0, 100),
                      breaks = c(0, 25, 50, 75, 100),
                      labels = c(0, 25, 50, 75, 100)) +
   facet_grid(taxid_rank ~ metric,
