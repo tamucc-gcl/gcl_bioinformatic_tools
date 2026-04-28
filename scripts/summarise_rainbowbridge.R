@@ -602,7 +602,7 @@ blast_classification_plot <- sample_composition %>%
                 width = 0.5) +
   scale_x_continuous(limits = c(0, 100),
                      breaks = c(0, 25, 50, 75, 100),
-                     labels = c(0, 25, 50, 75, 100))
+                     labels = c(0, 25, 50, 75, 100)) +
   facet_grid(taxid_rank ~ metric,
              scales = 'free_y',
              space = 'free_y',
