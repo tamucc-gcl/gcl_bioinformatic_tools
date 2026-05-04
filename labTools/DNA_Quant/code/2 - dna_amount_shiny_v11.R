@@ -488,9 +488,9 @@ ui <- fluidPage(
                      
                      bsCollapse(
                        bsCollapsePanel("Model Settings", 
-                                       numericInput("num_chains", "Number of Chains", value = 4, min = 1, step = 1),
-                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 2000, min = 1, step = 1),
-                                       numericInput("iter_warmup", "Number of Warmup Iterations", value = 1000, min = 1, step = 1),
+                                       numericInput("num_chains", "Number of Chains", value = 20, min = 1, step = 1),
+                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 7000, min = 1, step = 1),
+                                       numericInput("iter_warmup", "Number of Warmup Iterations", value = 2000, min = 1, step = 1),
                                        numericInput("thin", "Thinning Interval", value = 10, min = 1, step = 1),
                                        style = "primary"
                        ),
