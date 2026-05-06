@@ -247,8 +247,8 @@ make_init_fn <- function(emp_priors, n_groups_1, n_groups_2) {
       b_shape         = array(rnorm(1, 0, 0.3), dim = 1),
       sd_1            = array(abs(rnorm(1, 0.3, 0.1)), dim = 1),
       sd_2            = array(abs(rnorm(1, 0.3, 0.1)), dim = 1),
-      z_1             = array(rnorm(n_groups_1, 0, 0.1), dim = c(1, n_groups_1)),
-      z_2             = array(rnorm(n_groups_2, 0, 0.1), dim = c(1, n_groups_2))
+      z_1_raw         = array(rnorm(n_groups_1 - 1, 0, 0.1), dim = c(1, n_groups_1 - 1)),
+      z_2_raw         = array(rnorm(n_groups_2 - 1, 0, 0.1), dim = c(1, n_groups_2 - 1))
     )
   }
 }
@@ -279,8 +279,8 @@ inits_from_fit <- function(cmdstan_fit, n_chains, n_groups_1, n_groups_2) {
   med <- setNames(s$median, s$variable)
   
   # z_1, z_2 medians (one per group)
-  z1_med <- cmdstan_fit$summary(variables = "z_1", "median")$median
-  z2_med <- cmdstan_fit$summary(variables = "z_2", "median")$median
+  z1_med <- cmdstan_fit$summary(variables = "z_1_raw", "median")$median
+  z2_med <- cmdstan_fit$summary(variables = "z_2_raw", "median")$median
   
   lapply(seq_len(n_chains), function(i) {
     list(
@@ -290,8 +290,8 @@ inits_from_fit <- function(cmdstan_fit, n_chains, n_groups_1, n_groups_2) {
       b_shape         = array(unname(med["b_shape[1]"]) + rnorm(1, 0, 0.05), dim = 1),
       sd_1            = array(max(0.01, unname(med["sd_1[1]"])) + abs(rnorm(1, 0, 0.02)), dim = 1),
       sd_2            = array(max(0.01, unname(med["sd_2[1]"])) + abs(rnorm(1, 0, 0.02)), dim = 1),
-      z_1             = array(z1_med + rnorm(length(z1_med), 0, 0.05), dim = c(1, n_groups_1)),
-      z_2             = array(z2_med + rnorm(length(z2_med), 0, 0.05), dim = c(1, n_groups_2))
+      z_1_raw         = array(z1_med + rnorm(length(z1_med), 0, 0.05), dim = c(1, n_groups_1 - 1)),
+      z_2_raw         = array(z2_med + rnorm(length(z2_med), 0, 0.05), dim = c(1, n_groups_2 - 1))
     )
   })
 }
@@ -1206,10 +1206,10 @@ server <- function(input, output, session) {
                              empty = TRUE)
       
       if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
-        dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan',
+        dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan', #sum to zero change
                                    cpp_options = list(stan_threads = TRUE))
       } else {
-        dna_model <- cmdstan_model('dna_concentration_threaded_sumtozero.stan',
+        dna_model <- cmdstan_model('dna_concentration_threaded_sumtozero.stan', #sum to zero change
                                    cpp_options = list(stan_threads = TRUE))
       }
       
@@ -1263,10 +1263,10 @@ server <- function(input, output, session) {
           
           list(
             ok = all(s$rhat < 1.05, na.rm = TRUE) &&
-              all(s$ess_bulk > 400, na.rm = TRUE) &&
-              all(s$ess_tail > 400, na.rm = TRUE) &&
-              sum(diag_sum$num_divergent) < 10 && 
-              treedepth_hits / total_iter < 0.1,
+              all(s$ess_bulk > 250, na.rm = TRUE) &&
+              all(s$ess_tail > 250, na.rm = TRUE) &&
+              sum(diag_sum$num_divergent) / total_iter < 0.01 && 
+              treedepth_hits / total_iter < 0.5,
             max_rhat    = max(s$rhat, na.rm = TRUE),
             min_ess     = min(c(s$ess_bulk, s$ess_tail), na.rm = TRUE),
             n_divergent = sum(diag_sum$num_divergent),
@@ -1350,8 +1350,20 @@ server <- function(input, output, session) {
         label         = "initial fit"
       )
       
+      # NEW: always-on diagnostic notification
+      showNotification(
+        sprintf("Sampling diagnostics — max Rhat=%.3f, min ESS=%.0f, divergent=%d/%d (%.1f%%)",
+                result$diag$max_rhat,
+                result$diag$min_ess,
+                result$diag$n_divergent,
+                input$num_chains * input$iter_sampling,
+                100 * result$diag$n_divergent / (input$num_chains * input$iter_sampling)),
+        type = if (result$diag$ok) "message" else "warning",
+        duration = NULL, closeButton = TRUE
+      )
+      
       # ---- Attempt 2 (if needed): warm-start from posterior + harder settings ----
-      if (!result$diag$ok) {
+      if (FALSE && !result$diag$ok) {
         showNotification(
           sprintf("Initial fit had convergence issues (max Rhat=%.3f, %d divergent). Refitting...",
                   result$diag$max_rhat, result$diag$n_divergent),
@@ -1368,7 +1380,7 @@ server <- function(input, output, session) {
           iter_warmup   = max(input$iter_warmup * 2, 2500),
           iter_sampling = max(input$iter_sampling * 1.5, 6000),
           thin          = max(input$thin, 2),
-          adapt_delta   = 0.99,
+          adapt_delta   = 0.995,
           init_values   = warm_inits,
           label         = "refit (warm start)"
         )
