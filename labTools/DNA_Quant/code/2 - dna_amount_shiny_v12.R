@@ -1206,10 +1206,10 @@ server <- function(input, output, session) {
                              empty = TRUE)
       
       if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
-        dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan',
+        dna_model <- cmdstan_model('model/dna_concentration_threaded.stan',
                                    cpp_options = list(stan_threads = TRUE))
       } else {
-        dna_model <- cmdstan_model('dna_concentration_threaded_sumtozero.stan',
+        dna_model <- cmdstan_model('dna_concentration_threaded.stan',
                                    cpp_options = list(stan_threads = TRUE))
       }
       
