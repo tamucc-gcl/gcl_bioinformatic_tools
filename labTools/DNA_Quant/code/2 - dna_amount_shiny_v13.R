@@ -26,7 +26,7 @@ library(waiter) |> suppressMessages() |> suppressWarnings()
 library(jsonlite) |> suppressMessages() |> suppressWarnings() 
 library(DT) |> suppressMessages() |> suppressWarnings()
 
-if(Sys.info()["nodename"] == 'gawain'){
+if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
   set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.36.0')
 }
 
@@ -1205,7 +1205,7 @@ server <- function(input, output, session) {
                                            !!sym(input$y_var) > 0),
                              empty = TRUE)
       
-      if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
+      if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
         dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan', #sum to zero change
                                    cpp_options = list(stan_threads = TRUE))
       } else {
@@ -1235,7 +1235,7 @@ server <- function(input, output, session) {
       init_fn <- make_init_fn(emp_priors, n_groups_1, n_groups_2)
       
       # Create a persistent output directory for the CmdStanR CSV files.
-      if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
+      if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
         output_dir <- "model/cmdstan_output"
       } else {
         output_dir <- "./cmdstan_output"
@@ -1274,7 +1274,7 @@ server <- function(input, output, session) {
           )
         }
         
-        if (Sys.info()["nodename"] %in% c('gawain', 'lancelot')) {
+        if (Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn") {
           set_cmdstan_path(list.dirs('/home/shiny/.cmdstan', recursive = FALSE))
           dna_model <- cmdstan_model('model/dna_concentration_threaded.stan',
                                      cpp_options = list(stan_threads = TRUE))
@@ -1812,7 +1812,7 @@ server <- function(input, output, session) {
     }
     
     ### Output STAN Model Code ####
-    if(Sys.info()["nodename"] == 'gawain'){
+    if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
       file.copy('model/dna_concentration_threaded.stan', model_code, overwrite = TRUE)
     } else {
       file.copy('dna_concentration_threaded.stan', model_code, overwrite = TRUE)
