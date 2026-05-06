@@ -26,7 +26,7 @@ library(waiter) |> suppressMessages() |> suppressWarnings()
 library(jsonlite) |> suppressMessages() |> suppressWarnings() 
 library(DT) |> suppressMessages() |> suppressWarnings()
 
-if(Sys.info()["nodename"] %in% c('gawain', 'lancelot')){
+if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
   set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.36.0')
 }
 
