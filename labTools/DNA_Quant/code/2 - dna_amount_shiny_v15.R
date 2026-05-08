@@ -1238,7 +1238,7 @@ server <- function(input, output, session) {
       
       model_formula <- str_c(input$y_var, '~ is_control + (1 | sample_id)')
       
-      if (input$shape_re) {
+      if (shape_re_val) {
         # Full model with per-sample shape RE
         dna_form <- bf(as.formula(model_formula),
                        shape ~ is_control + (1 | sample_id))
@@ -1254,7 +1254,7 @@ server <- function(input, output, session) {
                                            !!sym(input$y_var) > 0),
                              empty = TRUE)
       
-      stan_filename <- if (input$shape_re) {
+      stan_filename <- if (shape_re_val) {
         "dna_concentration_threaded_sumtozero.stan"
       } else {
         "dna_concentration_threaded_sumtozero_noshapere.stan"
@@ -1284,11 +1284,11 @@ server <- function(input, output, session) {
           min(c(parallelly::availableCores(), input$num_chains))
       )
       n_groups_1 <- sd_base$N_1
-      n_groups_2 <- if (input$shape_re) sd_base$N_2 else NA
+      n_groups_2 <- if (shape_re_val) sd_base$N_2 else NA
       
       data_stan <- c(sd_base, emp_priors)
       
-      shape_re_val <- input$shape_re   # force evaluation now, in reactive context
+      
       init_fn <- make_init_fn(emp_priors, n_groups_1, n_groups_2,
                               shape_re = shape_re_val)
       
@@ -1304,6 +1304,45 @@ server <- function(input, output, session) {
       
       if (!dir.exists(output_dir)) {
         dir.create(output_dir)
+      }
+      
+      # === Laplace branch (fast_laplace mode) ===
+      if (use_laplace) {
+        # We already have dna_model loaded earlier (from the toggle-aware cmdstan_model call).
+        # Just need to also load it here since the NUTS path defers that into the subprocess.
+        # Check if dna_model exists (it should, from the earlier cmdstan_model call).
+        
+        showNotification(
+          "Fitting simplified model (Laplace approximation, ~5 sec).",
+          type = "message", duration = 4
+        )
+        
+        withProgress(message = "Fitting (Laplace)", value = 0.5, {
+          laplace_fit <- dna_model$laplace(
+            data    = data_stan,
+            init    = init_fn,
+            draws   = 5000,
+            threads = max(1, parallelly::availableCores() %/% 4),
+            output_dir = output_dir,
+            refresh = 0
+          )
+          setProgress(value = 1)
+        })
+        
+        # Reconstruct as brmsfit so downstream code (dna_summary, etc.) works unchanged
+        dna_model_bayes$fit <- read_csv_as_stanfit(laplace_fit$output_files(),
+                                                   model = dna_model)
+        dna_model_bayes <- rename_pars(dna_model_bayes)
+        
+        # Clean up CSV files
+        unlink(output_dir, recursive = TRUE)
+        
+        showNotification(
+          "Laplace fit complete. CIs are ~70% of NUTS width (slightly tight).",
+          type = "message", duration = 6
+        )
+        
+        return(dna_model_bayes)
       }
       
       # Define the function to run sampling in the background using callr::r_bg.
