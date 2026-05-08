@@ -27,7 +27,7 @@ library(jsonlite) |> suppressMessages() |> suppressWarnings()
 library(DT) |> suppressMessages() |> suppressWarnings()
 
 if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
-  set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.36.0')
+  set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.38.0')
 }
 
 #### Helper Functions ####
@@ -1380,7 +1380,7 @@ server <- function(input, output, session) {
       )
       
       # ---- Attempt 2 (if needed): warm-start from posterior + harder settings ----
-      if (FALSE && !result$diag$ok) {
+      if ((Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn") && !result$diag$ok) {
         showNotification(
           sprintf("Initial fit had convergence issues (max Rhat=%.3f, %d divergent). Refitting...",
                   result$diag$max_rhat, result$diag$n_divergent),
@@ -1413,9 +1413,22 @@ server <- function(input, output, session) {
       }
       
       output_files <- result$files
-      dna_model_bayes$fit <- read_csv_as_stanfit(output_files, model = dna_model)
-      dna_model_bayes <- rename_pars(dna_model_bayes)
-      unlink(output_dir, recursive = TRUE)
+      
+      withProgress(message = "Processing results", value = 0.3, {
+        setProgress(value = 0.3, detail = "Loading samples...")
+        output_files <- result$files
+        
+        setProgress(value = 0.6, detail = "Reconstructing fit...")
+        dna_model_bayes$fit <- read_csv_as_stanfit(output_files, model = dna_model)
+        dna_model_bayes <- rename_pars(dna_model_bayes)
+        
+        setProgress(value = 0.9, detail = "Cleaning up...")
+        unlink(output_dir, recursive = TRUE)
+        
+        setProgress(value = 1)
+      })
+      
+      dna_model_bayes
       dna_model_bayes
     }, error = function(e) {
       detail <- if (!is.null(e$parent)) conditionMessage(e$parent) else conditionMessage(e)
