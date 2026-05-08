@@ -217,22 +217,39 @@ compute_empirical_priors <- function(y, is_control, sample_id) {
   
   shape_est <- max(0.5, mean(y_pos)^2 / var(y_pos))
   
-  # NEW: empirical between-sample SD on log scale
+  # Empirical between-sample SD on log scale
   sample_log_means <- tapply(log_y, sample_id[pos], mean)
-  sd1_emp <- max(0.5, sd(sample_log_means, na.rm = TRUE))   # floor at 0.5
+  n_samples <- sum(!is.na(sample_log_means))
+  sd1_emp <- max(0.5, sd(sample_log_means, na.rm = TRUE))
   
-  # Pick gamma(a, b) with mean = sd1_emp, CV = 0.5 (moderately informative)
-  # mean = a/b, var = a/b^2 → b = 1/(0.25 * sd1_emp), a = sd1_emp * b
-  gamma_b <- 1 / (0.25 * sd1_emp)
-  gamma_a <- sd1_emp * gamma_b
+  # Adaptive CV: shrinks toward 0.15 (tight) as n_samples grows,
+  # expands toward 0.40 (loose) when data is sparse
+  # At n=10:  CV ≈ 0.36 (very loose, lets prior be wide)
+  # At n=50:  CV ≈ 0.21
+  # At n=180: CV ≈ 0.16 (tight — data is informative)
+  # At n=380: CV ≈ 0.13 (very tight — full plate)
+  prior_cv <- max(0.15, min(0.40, 1 / sqrt(2 * (n_samples - 1))))
+  
+  # Convert mean and CV to gamma(a, b) parameters:
+  # mean = a/b, var = a/b^2 = (CV * mean)^2
+  # → b = 1 / (CV^2 * mean), a = mean * b
+  gamma_b_sd1 <- 1 / (prior_cv^2 * sd1_emp)
+  gamma_a_sd1 <- sd1_emp * gamma_b_sd1
+  
+  # For shape RE, looser prior since we don't have a clean empirical estimate
+  prior_cv_shape <- max(0.30, min(0.50, 2 / sqrt(2 * (n_samples - 1))))
+  sd2_emp_proxy <- 1.0  # default scale; could be refined but rarely matters
+  gamma_b_sd2 <- 1 / (prior_cv_shape^2 * sd2_emp_proxy)
+  gamma_a_sd2 <- sd2_emp_proxy * gamma_b_sd2
+  
   
   list(
     intercept_prior      = c(median(log_y_sample), max(2 * sd(log_y), 1.5)),
     beta_prior           = c(0, 2.5),
-    var_prior            = c(gamma_a, gamma_b),     # was c(2, 1)
+    var_prior            = c(gamma_a_sd1, gamma_b_sd1),       # adaptive
     inteceptShape_prior  = c(log(shape_est), 1.5),
     betaShape_prior      = c(0, 2.5),
-    varShape_prior       = c(gamma_a, gamma_b)      # was c(2, 1)
+    varShape_prior       = c(gamma_a_sd2, gamma_b_sd2)        # adaptive but conservative
   )
 }
 
@@ -582,9 +599,9 @@ ui <- fluidPage(
                      bsCollapse(
                        bsCollapsePanel("Model Settings", 
                                        numericInput("num_chains", "Number of Chains", value = 6, min = 1, step = 1),
-                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 5000, min = 1, step = 1),
-                                       numericInput("iter_warmup", "Number of Warmup Iterations", value = 5000, min = 1, step = 1),
-                                       numericInput("thin", "Thinning Interval", value = 10, min = 1, step = 1),
+                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 3000, min = 1, step = 1),
+                                       numericInput("iter_warmup", "Number of Warmup Iterations", value = 1500, min = 1, step = 1),
+                                       numericInput("thin", "Thinning Interval", value = 1, min = 1, step = 1),
                                        style = "primary"
                        ),
                        open = NULL
@@ -1419,7 +1436,8 @@ server <- function(input, output, session) {
         select(sample_id, sample_type, is_control) %>%
         distinct() %>%
         add_epred_draws(dna_model_bayes, 
-                        allow_new_levels = TRUE) %>%
+                        allow_new_levels = TRUE,
+                        ndraws = 1000) %>%
         point_interval(.width = 0.95) %>%
         rename(!!sym(str_c(input$y_var, "_mean")) := .epred,
                !!sym(str_c(input$y_var, "_lwr95")) := .lower,
