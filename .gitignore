@@ -2,3 +2,5 @@
 /labTools/DNA_Quant/working_example_data
 /labTools/DNA_Quant/code/cmdstan_output
 /labTools/DNA_Quant/code/testing
+labTools/DNA_Quant/code/dna_concentration_threaded
+labTools/DNA_Quant/code/dna_concentration_threaded_sumtozero

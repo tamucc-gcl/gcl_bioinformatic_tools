@@ -581,7 +581,7 @@ ui <- fluidPage(
                      
                      bsCollapse(
                        bsCollapsePanel("Model Settings", 
-                                       numericInput("num_chains", "Number of Chains", value = 20, min = 1, step = 1),
+                                       numericInput("num_chains", "Number of Chains", value = 6, min = 1, step = 1),
                                        numericInput("iter_sampling", "Number of Sampling Iterations", value = 5000, min = 1, step = 1),
                                        numericInput("iter_warmup", "Number of Warmup Iterations", value = 5000, min = 1, step = 1),
                                        numericInput("thin", "Thinning Interval", value = 10, min = 1, step = 1),
@@ -1276,10 +1276,10 @@ server <- function(input, output, session) {
         
         if (Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn") {
           set_cmdstan_path(list.dirs('/home/shiny/.cmdstan', recursive = FALSE))
-          dna_model <- cmdstan_model('model/dna_concentration_threaded.stan',
+          dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan',
                                      cpp_options = list(stan_threads = TRUE))
         } else {
-          dna_model <- cmdstan_model('dna_concentration_threaded.stan',
+          dna_model <- cmdstan_model('dna_concentration_threaded_sumtozero.stan',
                                      cpp_options = list(stan_threads = TRUE))
         }
         
