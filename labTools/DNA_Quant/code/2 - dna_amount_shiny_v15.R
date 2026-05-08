@@ -1534,15 +1534,12 @@ server <- function(input, output, session) {
   
   #### DNA Summary Calculations ####
   dna_summary <- eventReactive(input$fit_model, {
-    log_path <- "/tmp/shiny_modelfit_debug.log"
-    cat(format(Sys.time()), "ENTER model_fit\n", file = log_path, append = TRUE)
+    
     tryCatch({
-      cat(format(Sys.time()), "1: pre-req\n", file = log_path, append = TRUE)
+      
       req(filtered_data(), input$y_var, model_fit())
-      cat(format(Sys.time()), "2: post-req\n", file = log_path, append = TRUE)
       dna_model_bayes <- model_fit()
       filtered_data <- filtered_data()
-      cat(format(Sys.time()), "3: filtered_data nrow:", nrow(filtered_data), "\n", file = log_path, append = TRUE)
       
       quant_files_summarized <- filtered_data %>%
         select(sample_id, sample_type, is_control) %>%
