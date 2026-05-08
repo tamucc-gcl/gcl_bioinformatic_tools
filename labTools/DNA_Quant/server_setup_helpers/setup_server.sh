@@ -10,9 +10,10 @@ sudo mkdir -p /srv/shiny-server/DNA_Quantification/3-DNA_normalization_PCR
 
 #Copy App code
 sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/1\ -\ quantPlate_shiny_v4.R  /srv/shiny-server/DNA_Quantification/1-quant_plate/app.R
-sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/2\ -\ dna_amount_shiny_v13.R  /srv/shiny-server/DNA_Quantification/2-DNA_concentration/app.R
+sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/2\ -\ dna_amount_shiny_v14.R  /srv/shiny-server/DNA_Quantification/2-DNA_concentration/app.R
 sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/3\ -\ Normalize_DNA_for_PCR_v4.R  /srv/shiny-server/DNA_Quantification/3-DNA_normalization_PCR/app.R
 sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/dna_concentration_threaded_sumtozero.stan /srv/shiny-server/DNA_Quantification/2-DNA_concentration/model/
+sudo cp gcl_bioinformatic_tools/labTools/DNA_Quant/code/dna_concentration_threaded_sumtozero_noshapere.stan /srv/shiny-server/DNA_Quantification/2-DNA_concentration/model/
 
 # Writeable folders for outputs
 sudo mkdir -p /srv/shiny-server/DNA_Quantification/1-quant_plate/outdir \
