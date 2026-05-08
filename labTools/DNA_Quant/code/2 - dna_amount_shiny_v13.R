@@ -27,7 +27,9 @@ library(jsonlite) |> suppressMessages() |> suppressWarnings()
 library(DT) |> suppressMessages() |> suppressWarnings()
 
 if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
-  set_cmdstan_path('/home/shiny/.cmdstan/cmdstan-2.38.0')
+  cmdstan_dirs <- list.dirs('/home/shiny/.cmdstan', recursive = FALSE)
+  cmdstan_dirs <- cmdstan_dirs[grepl("cmdstan-", basename(cmdstan_dirs))]
+  set_cmdstan_path(sort(cmdstan_dirs, decreasing = TRUE)[1])
 }
 
 #### Helper Functions ####
@@ -1292,7 +1294,9 @@ server <- function(input, output, session) {
         }
         
         if (Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn") {
-          set_cmdstan_path(list.dirs('/home/shiny/.cmdstan', recursive = FALSE))
+          cmdstan_dirs <- list.dirs('/home/shiny/.cmdstan', recursive = FALSE)
+          cmdstan_dirs <- cmdstan_dirs[grepl("cmdstan-", basename(cmdstan_dirs))]
+          set_cmdstan_path(sort(cmdstan_dirs, decreasing = TRUE)[1])
           dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan',
                                      cpp_options = list(stan_threads = TRUE))
         } else {
@@ -1331,7 +1335,8 @@ server <- function(input, output, session) {
                       num_chains = num_chains, iter_sampling = iter_sampling,
                       iter_warmup = iter_warmup, thin = thin,
                       init_values = init_values, adapt_delta = adapt_delta),
-          stdout = "|", stderr = "2>&1"
+          stdout = "|", stderr = "2>&1",
+          supervise = TRUE
         )
         
         withProgress(message = paste("Fitting model:", label), value = 0, {
