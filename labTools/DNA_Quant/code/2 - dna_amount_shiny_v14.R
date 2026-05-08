@@ -1297,7 +1297,8 @@ server <- function(input, output, session) {
       
       # Define the function to run sampling in the background using callr::r_bg.
       sampling_function <- function(data_stan, output_dir, num_chains, iter_sampling,
-                                    iter_warmup, thin, init_values, adapt_delta) {
+                                    iter_warmup, thin, init_values, adapt_delta,
+                                    stan_filename) {
         library(cmdstanr)
         
         # MUST be defined inside the subprocess — r_bg starts a fresh R session
@@ -1328,12 +1329,13 @@ server <- function(input, output, session) {
           cmdstan_dirs <- list.dirs('/home/shiny/.cmdstan', recursive = FALSE)
           cmdstan_dirs <- cmdstan_dirs[grepl("cmdstan-", basename(cmdstan_dirs))]
           set_cmdstan_path(sort(cmdstan_dirs, decreasing = TRUE)[1])
-          dna_model <- cmdstan_model('model/dna_concentration_threaded_sumtozero.stan',
-                                     cpp_options = list(stan_threads = TRUE))
+          stan_path <- file.path("model", stan_filename)
         } else {
-          dna_model <- cmdstan_model('dna_concentration_threaded_sumtozero.stan',
-                                     cpp_options = list(stan_threads = TRUE))
+          stan_path <- stan_filename
         }
+        
+        dna_model <- cmdstan_model(stan_path,
+                                   cpp_options = list(stan_threads = TRUE))
         
         fit <- dna_model$sample(
           data = data_stan,
@@ -1360,57 +1362,16 @@ server <- function(input, output, session) {
       
       run_attempt <- function(num_chains, iter_warmup, iter_sampling, thin,
                               adapt_delta, init_values, label) {
-        # bg <- callr::r_bg(
-        #   func = sampling_function,
-        #   args = list(data_stan = data_stan, output_dir = output_dir,
-        #               num_chains = num_chains, iter_sampling = iter_sampling,
-        #               iter_warmup = iter_warmup, thin = thin,
-        #               init_values = init_values, adapt_delta = adapt_delta),
-        #   stdout = "|", stderr = "2>&1",
-        #   supervise = TRUE
-        # )
-        
-        # DEBUG: dump everything about the callr call
-        log_path <- "/tmp/shiny_callr_debug.log"
-        cat("\n=== ", format(Sys.time()), " run_attempt called ===\n",
-            file = log_path, append = TRUE)
-        cat("getwd():", getwd(), "\n", file = log_path, append = TRUE)
-        cat("R_LIBS_USER:", Sys.getenv("R_LIBS_USER"), "\n", file = log_path, append = TRUE)
-        cat("R_LIBS_SITE:", Sys.getenv("R_LIBS_SITE"), "\n", file = log_path, append = TRUE)
-        cat("HOME:", Sys.getenv("HOME"), "\n", file = log_path, append = TRUE)
-        cat("TMPDIR:", Sys.getenv("TMPDIR"), "\n", file = log_path, append = TRUE)
-        cat(".libPaths():", paste(.libPaths(), collapse = ":"), "\n", file = log_path, append = TRUE)
-        cat("class(init_values):", class(init_values), "\n", file = log_path, append = TRUE)
-        cat("class(data_stan):", class(data_stan), "\n", file = log_path, append = TRUE)
-        cat("length(data_stan):", length(data_stan), "\n", file = log_path, append = TRUE)
-        
-        bg <- tryCatch(
-          callr::r_bg(
-            func = sampling_function,
-            args = list(data_stan = data_stan, output_dir = output_dir,
-                        num_chains = num_chains, iter_sampling = iter_sampling,
-                        iter_warmup = iter_warmup, thin = thin,
-                        init_values = init_values, adapt_delta = adapt_delta),
-            stdout = "|", stderr = "2>&1",
-            supervise = TRUE
-          ),
-          error = function(e) {
-            cat("r_bg threw error: ", conditionMessage(e), "\n", file = log_path, append = TRUE)
-            if (!is.null(e$parent)) {
-              cat("PARENT: ", conditionMessage(e$parent), "\n", file = log_path, append = TRUE)
-            }
-            if (!is.null(e$call)) {
-              cat("CALL: ", deparse(e$call), "\n", file = log_path, append = TRUE)
-            }
-            cat("TRACEBACK:\n", file = log_path, append = TRUE)
-            for (frame in sys.calls()) {
-              cat("  ", deparse(frame)[1], "\n", file = log_path, append = TRUE)
-            }
-            stop(e)  # rethrow so the outer tryCatch still catches it
-          }
+        bg <- callr::r_bg(
+          func = sampling_function,
+          args = list(data_stan = data_stan, output_dir = output_dir,
+                      num_chains = num_chains, iter_sampling = iter_sampling,
+                      iter_warmup = iter_warmup, thin = thin,
+                      init_values = init_values, adapt_delta = adapt_delta,
+                      stan_filename = stan_filename),
+          stdout = "|", stderr = "2>&1",
+          supervise = TRUE
         )
-        
-        cat("r_bg succeeded, bg pid:", bg$get_pid(), "\n", file = log_path, append = TRUE)
         
         withProgress(message = paste("Fitting model:", label), value = 0, {
           progress <- 0
