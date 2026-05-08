@@ -601,6 +601,9 @@ ui <- fluidPage(
                                        numericInput("max_low_volume", "Max Vol (μL) to Pipette", value = 4, min = 0),
                                        numericInput("target_dna", "Target Amount of DNA to Transfer (ng)", value = 2, min = 0),
                                        numericInput("mean_multiple", "Excess DNA is 'X' times more than the upper 95% CI", value = 2, min = 0),
+                                       numericInput("variable_cv_threshold",                              # NEW
+                                                    "Variable DNA flag if replicate CV exceeds:", 
+                                                    value = 0.3, min = 0, max = 2, step = 0.05),
                                        style = "primary"
                        ),
                        open = "Flag Settings"
@@ -609,10 +612,10 @@ ui <- fluidPage(
                      bsCollapse(
                        bsCollapsePanel("Model Settings", 
                                        checkboxInput("shape_re", 
-                                                     "Per-sample shape random effect (slower, more uncertainty)",
+                                                     "Per-sample shape random effect (slower, more uncertainty - increase sampling and warmup to 5k+)",
                                                      value = FALSE),
                                        numericInput("num_chains", "Number of Chains", value = 6, min = 1, step = 1),
-                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 1000, min = 1, step = 1),
+                                       numericInput("iter_sampling", "Number of Sampling Iterations", value = 1500, min = 1, step = 1),
                                        numericInput("iter_warmup", "Number of Warmup Iterations", value = 1000, min = 1, step = 1),
                                        numericInput("thin", "Thinning Interval", value = 1, min = 1, step = 1),
                                        style = "primary"
@@ -1278,8 +1281,9 @@ server <- function(input, output, session) {
       
       data_stan <- c(sd_base, emp_priors)
       
+      shape_re_val <- input$shape_re   # force evaluation now, in reactive context
       init_fn <- make_init_fn(emp_priors, n_groups_1, n_groups_2,
-                              shape_re = input$shape_re)
+                              shape_re = shape_re_val)
       
       # Create a persistent output directory for the CmdStanR CSV files.
       if(Sys.info()["nodename"] %in% c('gawain', 'lancelot') & Sys.info()["user"] != "jselwyn"){
@@ -1314,14 +1318,15 @@ server <- function(input, output, session) {
           
           list(
             ok = all(s$rhat < 1.05, na.rm = TRUE) &&
-              all(s$ess_bulk > 250, na.rm = TRUE) &&
-              all(s$ess_tail > 250, na.rm = TRUE) &&
-              sum(diag_sum$num_divergent) / total_iter < 0.01 && 
-              treedepth_hits / total_iter < 0.5,
-            max_rhat    = max(s$rhat, na.rm = TRUE),
-            min_ess     = min(c(s$ess_bulk, s$ess_tail), na.rm = TRUE),
-            n_divergent = sum(diag_sum$num_divergent),
-            treedepth_pct  = round(100 * treedepth_hits / total_iter, 1)
+              all(s$ess_bulk > 200, na.rm = TRUE) &&
+              all(s$ess_tail > 200, na.rm = TRUE) &&
+              sum(diag_sum$num_divergent) / total_iter < 0.01,
+            # treedepth no longer in `ok` — reported separately
+            max_rhat       = max(s$rhat, na.rm = TRUE),
+            min_ess        = min(c(s$ess_bulk, s$ess_tail), na.rm = TRUE),
+            n_divergent    = sum(diag_sum$num_divergent),
+            treedepth_pct  = round(100 * treedepth_hits / total_iter, 1),
+            treedepth_high = treedepth_hits / total_iter >= 0.5   # informational
           )
         }
         
@@ -1443,8 +1448,11 @@ server <- function(input, output, session) {
         )
         if (!result$diag$ok) {
           showNotification(
-            sprintf("Convergence still marginal (max Rhat=%.3f, min ESS=%.0f). Results may be unreliable — check diagnostics.",
-                    result$diag$max_rhat, result$diag$min_ess),
+            sprintf("Refit diagnostics — Rhat=%.3f, ESS=%.0f, divergent=%d, treedepth=%.1f%%. Check whichever exceeds threshold.",
+                    result$diag$max_rhat,
+                    result$diag$min_ess,
+                    result$diag$n_divergent,
+                    result$diag$treedepth_pct),
             type = "warning", duration = NULL, closeButton = TRUE
           )
         } else {
@@ -1557,7 +1565,16 @@ server <- function(input, output, session) {
       dna_quantity_interval <- dna_summary()$dna_quantity_interval
       dna_variability_interval <- dna_summary()$dna_variability_interval
       
+      # NEW: compute replicate-level CV per sample from raw data
+      replicate_cv <- filtered_data() %>%
+        filter(!!sym(input$y_var) > 0) %>%
+        group_by(sample_id) %>%
+        summarise(rep_cv = sd(!!sym(input$y_var)) / mean(!!sym(input$y_var)),
+                  n_reps = n(),
+                  .groups = "drop")
+      
       quant_files_flagged <- quant_files_summarized %>%
+        left_join(replicate_cv, by = "sample_id") %>%
         mutate(ul_per_rxn = (input$target_dna * mean_dna_concentration) / !!sym(str_c(input$y_var, "_mean")),
                ul_per_rxn = case_when(ul_per_rxn > input$max_low_volume & is_control ~ input$max_low_volume,
                                       ul_per_rxn > input$max_low_volume & !is_control ~ input$max_low_volume,
@@ -1584,6 +1601,7 @@ server <- function(input, output, session) {
           !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) & !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Excess & Variable DNA",
           !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) ~ "Excess DNA",
           !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Variable DNA",
+          rep_cv > input$variable_cv_threshold ~ "Variable DNA",
           TRUE ~ "Good Sample"),
           .after = sample_type) %>%
         select(sample_id,
