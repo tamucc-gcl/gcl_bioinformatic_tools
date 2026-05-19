@@ -592,7 +592,7 @@ ui <- fluidPage(
                      uiOutput("download_zip_ui"),
                      br(), br(),
                      checkboxInput("log_transform", "Plot Log10 Transform", value = TRUE), 
-                     checkboxInput("show_raw_points", "Overlay raw replicate values", value = FALSE),
+                     checkboxInput("show_raw_points", "Overlay raw replicate values", value = TRUE),
                      
                      # All your existing collapsible panels remain the same...
                      bsCollapse(
