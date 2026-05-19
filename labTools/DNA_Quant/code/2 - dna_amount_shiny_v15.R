@@ -1748,7 +1748,7 @@ server <- function(input, output, session) {
           geom_point(data = raw_points,
                      aes(x = raw_value, y = dna_plate_well_id),
                      inherit.aes = FALSE,
-                     shape = 4, size = 1.5, alpha = 0.5, color = "gray30")
+                     shape = 4, size = 3, alpha = 0.5, color = "gray30")
       }
       
       if (input$log_transform) {
