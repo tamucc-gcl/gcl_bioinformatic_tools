@@ -1641,9 +1641,10 @@ server <- function(input, output, session) {
                   by = 'is_control') %>%
         mutate(flags = case_when(
           is_control & !!sym(str_c(input$y_var, "_upr95")) > mean_dna_concentration ~ "Contaminated Control",
-          !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) & !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Excess & Variable DNA",
+          #!!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) & !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Excess & Variable DNA",
+          !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) & rep_cv > input$variable_cv_threshold ~ "Excess & Variable DNA",
           !!sym(str_c(input$y_var, "_mean")) > (input$mean_multiple * mean_upr_limit) ~ "Excess DNA",
-          !!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Variable DNA",
+          #!!sym(str_c(input$y_var, "_normspread")) > var_upr_limit ~ "Variable DNA",
           rep_cv > input$variable_cv_threshold ~ "Variable DNA",
           TRUE ~ "Good Sample"),
           .after = sample_type) %>%
