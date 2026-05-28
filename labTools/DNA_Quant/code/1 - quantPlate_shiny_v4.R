@@ -875,6 +875,8 @@ server <- function(input, output, session) {
     filename <- tolower(input$file_raw$name)
     if (grepl("accublue", filename) & grepl("nextgen", filename)) {
       "accublue-nextgen"
+    } else if (grepl("accublue", filename) & grepl("ngs", filename)) {
+      "accublue-nextgen"
     } else if (grepl("accuclear", filename)) {
       "accuclear"
     } else if (grepl("accublue", filename) & !grepl("nextgen", filename)){
