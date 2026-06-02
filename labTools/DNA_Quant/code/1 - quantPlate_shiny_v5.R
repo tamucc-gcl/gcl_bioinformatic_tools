@@ -621,6 +621,43 @@ ui <- fluidPage(
     div.shiny-input-container input[type='file'] {
       margin-bottom: 5px !important;
     }
+    
+    /* Standards volume warning modal */
+    .std-vol-warning-header {
+      background-color: #fff3cd;
+      border-bottom: 2px solid #ffc107;
+      padding: 15px 20px;
+      border-radius: 5px 5px 0 0;
+    }
+    .std-vol-warning-header h4 {
+      color: #856404;
+      margin: 0;
+      font-size: 18px;
+    }
+    .std-vol-warning-body {
+      padding: 15px 5px;
+    }
+    .std-vol-warning-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .std-vol-warning-body table th {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .std-vol-warning-body table td {
+      border: 1px solid #dee2e6;
+      padding: 6px 10px;
+    }
+    .std-vol-warning-body table tr.vol-mismatch td {
+      background-color: #fff3cd;
+      font-weight: bold;
+      color: #856404;
+    }
   "))),
   
   titlePanel("Step 1: Model DNA Concentration"),
@@ -884,6 +921,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   raw_data_loaded <- reactiveVal(NULL)  # Kit-agnostic joined data (retains dna_concentration)
+  pending_raw_data <- reactiveVal(NULL) # Holds data while awaiting modal confirmation
   
   # data_all is a reactive so it re-derives unit columns whenever quant_kit changes
   data_all <- reactive({
@@ -932,7 +970,6 @@ server <- function(input, output, session) {
     if (length(new_y) > 0) updateSelectInput(session, "y_var", choices = c("Please choose" = "", numeric_cols), selected = new_y[1])
   }, ignoreInit = TRUE)
   
-  # Auto-populate the output prefix when both files are loaded
   observeEvent(input$load_data, {
     # Clear any existing notifications
     removeNotification("file_error")
@@ -952,38 +989,72 @@ server <- function(input, output, session) {
       
       raw_joined <- read_quant_data_raw(input$file_raw$datapath, 
                                         input$file_plate$datapath)
-      raw_data_loaded(raw_joined)
-      # data_all() will automatically re-derive unit columns from raw_data_loaded + input$quant_kit
-      data_combined <- apply_quant_kit(raw_joined, input$quant_kit)
       
-      # Auto-populate the output prefix based on common prefix
-      if (nchar(input$outnamePrefix) == 0) {  # Only update if empty
-        prefix <- common_prefix(input$file_raw$name, input$file_plate$name)
-        if (nchar(prefix) > 0) {
-          updateTextInput(session, "outnamePrefix", value = prefix)
-        }
+      # ---- Standards volume check ----
+      std_volumes <- raw_joined %>%
+        filter(str_detect(plate_id, '[sS]tandard')) %>%
+        select(plate_id, sample_volume) %>%
+        distinct()
+      
+      non_5ul_stds <- filter(std_volumes, sample_volume != 5)
+      
+      if (nrow(non_5ul_stds) > 0) {
+        # Hold data until user confirms
+        pending_raw_data(raw_joined)
+        
+        # Build a small HTML table of all standard volumes for context
+        all_rows <- std_volumes %>%
+          mutate(flag = sample_volume != 5)
+        
+        table_rows <- purrr::pmap_chr(all_rows, function(plate_id, sample_volume, flag) {
+          row_class <- if (flag) ' class="vol-mismatch"' else ''
+          flag_icon <- if (flag) " ⚠️" else ""
+          sprintf('<tr%s><td>%s</td><td>%s µL%s</td></tr>',
+                  row_class, plate_id, sample_volume, flag_icon)
+        })
+        
+        table_html <- paste0(
+          '<table><thead><tr><th>Standard</th><th>Volume</th></tr></thead><tbody>',
+          paste(table_rows, collapse = ""),
+          '</tbody></table>'
+        )
+        
+        non5_list <- paste(
+          sprintf("%s (%.4g µL)", non_5ul_stds$plate_id, non_5ul_stds$sample_volume),
+          collapse = ", "
+        )
+        
+        showModal(modalDialog(
+          title = div(class = "std-vol-warning-header",
+                      h4(HTML("&#9888;&nbsp; Non-Standard Volume Detected"))),
+          div(class = "std-vol-warning-body",
+              tags$p(HTML(paste0(
+                "<strong>Expected standard volume: 5 µL.</strong><br>",
+                "The following standard(s) have a different volume: <strong>",
+                non5_list, "</strong>."
+              ))),
+              tags$p("Please confirm the volumes below are correct before proceeding."),
+              HTML(table_html),
+              tags$p(style = "margin-top: 12px; color: #6c757d; font-size: 12px;",
+                     "If these volumes are wrong, cancel and correct your plate map file.")
+          ),
+          footer = tagList(
+            actionButton("confirm_load", "Confirm & Load Data",
+                         class = "btn btn-warning",
+                         style = "font-weight: bold;"),
+            actionButton("cancel_load", "Cancel",
+                         class = "btn btn-secondary")
+          ),
+          easyClose = FALSE,
+          size = "m"
+        ))
+        
+      } else {
+        # All standards are 5 µL — load normally
+        .finalize_data_load(raw_joined, input, session,
+                            raw_data_loaded, first_model_fit_done,
+                            auto_populated_once, pending_raw_data)
       }
-      
-      # Auto-populate "Enter Standard Rows" with rows where plate_id == 'standard'
-      std_rows <- which(tolower(data_combined$plate_id) == "standard")
-      if (length(std_rows) > 0) {
-        default_std <- if (min(std_rows) == max(std_rows)) {
-          as.character(min(std_rows))
-        } else if ((max(std_rows) - min(std_rows)) == (length(std_rows) - 1)) {
-          paste0(min(std_rows), "-", max(std_rows))
-        } else {
-          stringr::str_c(std_rows, collapse = ', ')
-        }
-        updateTextInput(session, "selected_standards", value = default_std)
-      }
-      
-      showNotification(
-        paste("Data loaded successfully!", nrow(data_combined), "rows loaded with", 
-              sum(!is.na(data_combined$rfu)), "RFU measurements"), 
-        type = "message",
-        duration = NULL,
-        closeButton = TRUE
-      )
       
     }, error = function(e) {
       showNotification(
@@ -997,6 +1068,64 @@ server <- function(input, output, session) {
     })
   })
   
+  # Helper: finalize loading data into reactive state and update UI
+  .finalize_data_load <- function(raw_joined, input, session,
+                                  raw_data_loaded, first_model_fit_done,
+                                  auto_populated_once, pending_raw_data) {
+    raw_data_loaded(raw_joined)
+    pending_raw_data(NULL)
+    data_combined <- apply_quant_kit(raw_joined, input$quant_kit)
+    
+    # Auto-populate the output prefix based on common prefix
+    if (nchar(input$outnamePrefix) == 0) {
+      prefix <- common_prefix(input$file_raw$name, input$file_plate$name)
+      if (nchar(prefix) > 0) {
+        updateTextInput(session, "outnamePrefix", value = prefix)
+      }
+    }
+    
+    # Auto-populate "Enter Standard Rows" with rows where plate_id == 'standard'
+    std_rows <- which(tolower(data_combined$plate_id) == "standard")
+    if (length(std_rows) > 0) {
+      default_std <- if (min(std_rows) == max(std_rows)) {
+        as.character(min(std_rows))
+      } else if ((max(std_rows) - min(std_rows)) == (length(std_rows) - 1)) {
+        paste0(min(std_rows), "-", max(std_rows))
+      } else {
+        stringr::str_c(std_rows, collapse = ', ')
+      }
+      updateTextInput(session, "selected_standards", value = default_std)
+    }
+    
+    showNotification(
+      paste("Data loaded successfully!", nrow(data_combined), "rows loaded with",
+            sum(!is.na(data_combined$rfu)), "RFU measurements"),
+      type = "message",
+      duration = NULL,
+      closeButton = TRUE
+    )
+  }
+  
+  # User confirmed non-5 µL standards — proceed with loading
+  observeEvent(input$confirm_load, {
+    removeModal()
+    req(pending_raw_data())
+    .finalize_data_load(pending_raw_data(), input, session,
+                        raw_data_loaded, first_model_fit_done,
+                        auto_populated_once, pending_raw_data)
+  })
+  
+  # User cancelled — discard pending data
+  observeEvent(input$cancel_load, {
+    removeModal()
+    pending_raw_data(NULL)
+    showNotification(
+      "Data load cancelled. Please check your plate map and try again.",
+      type = "warning",
+      duration = 6,
+      closeButton = TRUE
+    )
+  })
   
   output$data_table <- renderDT({
     req(data_all())
