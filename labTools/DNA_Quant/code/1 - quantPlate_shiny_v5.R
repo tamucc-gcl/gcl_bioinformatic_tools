@@ -219,6 +219,38 @@ read_quant_data_raw <- function(path_raw_data, path_plate_map) {
   })
 }
 
+# Check for samples whose technical/quant replicates have identical RFU values.
+# Samples are identified by their source sample position in the plate map.
+# Standards are excluded because they are already handled separately.
+identify_identical_replicate_rfu <- function(quant_data) {
+  sample_groups <- quant_data %>%
+    filter(!str_detect(plate_id, '[sS]tandard'),
+           !is.na(rfu)) %>%
+    mutate(sample_key = str_c(plate_id, plate_row, plate_column, sep = " | "),
+           quant_well = str_c(str_to_upper(quant_row), quant_column)) %>%
+    group_by(sample_key, plate_id, plate_row, plate_column) %>%
+    summarise(
+      n_replicates = n(),
+      n_unique_rfu = n_distinct(rfu),
+      duplicate_rfu_values = {
+        dup_values <- unique(rfu[duplicated(rfu) | duplicated(rfu, fromLast = TRUE)])
+        str_c(signif(sort(dup_values), 8), collapse = ", ")
+      },
+      quant_wells = str_c(quant_well, collapse = ", "),
+      .groups = "drop"
+    ) %>%
+    filter(n_replicates > 1) %>%
+    mutate(has_identical_rfu = n_unique_rfu < n_replicates)
+  
+  flagged_samples <- filter(sample_groups, has_identical_rfu)
+  
+  list(
+    n_flagged = nrow(flagged_samples),
+    n_with_replicates = nrow(sample_groups),
+    flagged_samples = flagged_samples
+  )
+}
+
 # Apply kit-specific unit columns to the raw joined data
 apply_quant_kit <- function(quant_data, quant_kit) {
   standard_unit <- case_when(quant_kit == "accublue-nextgen" ~ "pg",
@@ -1050,10 +1082,10 @@ server <- function(input, output, session) {
         ))
         
       } else {
-        # All standards are 5 µL — load normally
-        .finalize_data_load(raw_joined, input, session,
-                            raw_data_loaded, first_model_fit_done,
-                            auto_populated_once, pending_raw_data)
+        # All standards are 5 µL — check sample replicate RFUs before loading
+        .check_replicate_rfu_warning_or_finalize(raw_joined, input, session,
+                                                 raw_data_loaded, first_model_fit_done,
+                                                 auto_populated_once, pending_raw_data)
       }
       
     }, error = function(e) {
@@ -1067,6 +1099,71 @@ server <- function(input, output, session) {
       raw_data_loaded(NULL)  # Clear any existing data
     })
   })
+  
+  # Helper: warn if sample replicates have identical RFU values, otherwise finalize load
+  .check_replicate_rfu_warning_or_finalize <- function(raw_joined, input, session,
+                                                       raw_data_loaded, first_model_fit_done,
+                                                       auto_populated_once, pending_raw_data) {
+    replicate_rfu_check <- identify_identical_replicate_rfu(raw_joined)
+    
+    if (replicate_rfu_check$n_flagged > 0) {
+      pending_raw_data(raw_joined)
+      
+      flagged_samples <- replicate_rfu_check$flagged_samples %>%
+        mutate(
+          sample_position = str_c(str_to_upper(plate_row), plate_column),
+          display_plate_id = if_else(is.na(plate_id) | plate_id == "", "(missing)", plate_id),
+          duplicate_rfu_values = if_else(duplicate_rfu_values == "", "(missing)", duplicate_rfu_values)
+        ) %>%
+        select(display_plate_id, sample_position, n_replicates,
+               duplicate_rfu_values, quant_wells)
+      
+      table_rows <- purrr::pmap_chr(flagged_samples, function(display_plate_id, sample_position,
+                                                              n_replicates, duplicate_rfu_values,
+                                                              quant_wells) {
+        sprintf('<tr class="vol-mismatch"><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+                display_plate_id, sample_position, n_replicates,
+                duplicate_rfu_values, quant_wells)
+      })
+      
+      table_html <- paste0(
+        '<table><thead><tr><th>Plate/Sample ID</th><th>Sample Well</th><th>Replicates</th><th>Identical RFU value(s)</th><th>Quant Wells</th></tr></thead><tbody>',
+        paste(table_rows, collapse = ""),
+        '</tbody></table>'
+      )
+      
+      showModal(modalDialog(
+        title = div(class = "std-vol-warning-header",
+                    h4(HTML("&#9888;&nbsp; Identical Replicate RFU Values Detected"))),
+        div(class = "std-vol-warning-body",
+            tags$p(HTML(paste0(
+              "<strong>", replicate_rfu_check$n_flagged, " / ",
+              replicate_rfu_check$n_with_replicates,
+              " sample(s) with replicates have identical RFU values.</strong>"
+            ))),
+            tags$p("This can happen when replicate quant wells were accidentally assigned to the same RFU well, or when the quant well IDs are incorrect in the plate map."),
+            tags$p("Please check that the quant well IDs are correct in the plate map before proceeding."),
+            HTML(table_html),
+            tags$p(style = "margin-top: 12px; color: #6c757d; font-size: 12px;",
+                   "If the quant well IDs are wrong, cancel and correct your plate map file.")
+        ),
+        footer = tagList(
+          actionButton("confirm_replicate_rfu_load", "Confirm & Load Data",
+                       class = "btn btn-warning",
+                       style = "font-weight: bold;"),
+          actionButton("cancel_load", "Cancel",
+                       class = "btn btn-secondary")
+        ),
+        easyClose = FALSE,
+        size = "l"
+      ))
+      
+    } else {
+      .finalize_data_load(raw_joined, input, session,
+                          raw_data_loaded, first_model_fit_done,
+                          auto_populated_once, pending_raw_data)
+    }
+  }
   
   # Helper: finalize loading data into reactive state and update UI
   .finalize_data_load <- function(raw_joined, input, session,
@@ -1106,8 +1203,17 @@ server <- function(input, output, session) {
     )
   }
   
-  # User confirmed non-5 µL standards — proceed with loading
+  # User confirmed non-5 µL standards — then check sample replicate RFUs before loading
   observeEvent(input$confirm_load, {
+    removeModal()
+    req(pending_raw_data())
+    .check_replicate_rfu_warning_or_finalize(pending_raw_data(), input, session,
+                                             raw_data_loaded, first_model_fit_done,
+                                             auto_populated_once, pending_raw_data)
+  })
+  
+  # User confirmed identical replicate RFU warning — proceed with loading
+  observeEvent(input$confirm_replicate_rfu_load, {
     removeModal()
     req(pending_raw_data())
     .finalize_data_load(pending_raw_data(), input, session,
