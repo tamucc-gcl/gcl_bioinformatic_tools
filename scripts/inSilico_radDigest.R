@@ -130,7 +130,7 @@ n_fragments <- processed_digestion %>%
   mutate(position = mean(size_window))
 
 processed_digestion %>%
-  filter(frag_length > 200,
+  filter(frag_length > 100,
          frag_length < 1000) %>%
   ggplot(aes(x = frag_length)) +
   geom_histogram(binwidth = 25) +
