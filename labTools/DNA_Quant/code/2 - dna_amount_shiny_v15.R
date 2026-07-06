@@ -731,7 +731,7 @@ server <- function(input, output, session) {
       req(input$csv_files)
       
       # Combine all CSV files into one tibble
-      quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE))
+      quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE, col_types = 'ccncnnn'))
       
       # Identify numeric columns in the CSV data, excluding names containing 'col', 'column', or 'volume'
       numeric_cols <- str_subset(
@@ -791,7 +791,7 @@ server <- function(input, output, session) {
       }
       
       # Read and combine the CSV files
-      quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE)) %>%
+      quant_plates <- map_dfr(input$csv_files$datapath, ~ read_csv(.x, show_col_types = FALSE, col_types = 'ccncnnn')) %>%
         rename_with(~str_replace(., 'column', 'col'))
       
       # Auto-populate the output prefix based on common prefix - NEW
