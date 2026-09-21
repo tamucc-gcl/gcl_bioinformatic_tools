@@ -251,6 +251,48 @@ identify_identical_replicate_rfu <- function(quant_data) {
   )
 }
 
+# Warn about unusual standard concentrations without changing the data or model.
+check_standard_concentrations <- function(raw_joined, quant_kit) {
+  # Concentrations are ng/ul. AccuBlue NGS/NextGen defaults are not yet supplied.
+  expected <- switch(quant_kit,
+                     "accublue" = c(0, 0.5, 1, 2, 4, 6, 8, 10),
+                     "accuclear" = c(0, 0.03, 0.1, 0.3, 1, 3, 10, 25),
+                     "accublue-nextgen" = c(0, 0.5, 2, 10, 50, 300),
+                     NULL)
+  if (is.null(expected)) return(invisible(NULL))
+  
+  # Compare distinct concentrations; replicate counts and row order do not matter.
+  # Check the original concentrations, before volume conversion or model exclusions.
+  observed <- raw_joined %>%
+    filter(str_detect(plate_id, '[sS]tandard')) %>%
+    pull(dna_concentration) %>%
+    unique() %>%
+    sort(na.last = TRUE)
+  
+  if (length(observed) == length(expected) && all(is.finite(observed)) &&
+      all(abs(observed - expected) <= 1e-8)) return(invisible(NULL))
+  
+  kit_name <- if (quant_kit == "accublue") "AccuBlue HS" else "AccuClear"
+  observed_text <- if (length(observed) > 0) paste(observed, collapse = ", ") else "None found"
+  
+  showModal(modalDialog(
+    title = div(class = "std-vol-warning-header",
+                h4(HTML("&#9888;&nbsp; Unexpected Standard Concentrations"))),
+    div(class = "std-vol-warning-body",
+        tags$p("The standard concentrations differ from the usual values for ",
+               tags$strong(kit_name), "."),
+        tags$p(tags$strong("Expected (ng/µL): "), paste(expected, collapse = ", ")),
+        tags$p(tags$strong("Detected (ng/µL): "), observed_text),
+        tags$p("Processing will continue using the detected values. Please acknowledge that these are the intended concentrations."),
+        tags$p(style = "color: #6c757d; font-size: 12px;",
+               "If these are incorrect, close this message, select the correct Quant Kit or correct the plate map and reload the data. NA indicates a missing concentration.")
+    ),
+    footer = modalButton("Acknowledge & Continue"),
+    easyClose = FALSE,
+    size = "m"
+  ))
+}
+
 # Apply kit-specific unit columns to the raw joined data
 apply_quant_kit <- function(quant_data, quant_kit) {
   standard_unit <- case_when(quant_kit == "accublue-nextgen" ~ "pg",
@@ -1000,6 +1042,9 @@ server <- function(input, output, session) {
     new_y <- str_subset(numeric_cols, '_per_well')
     if (length(new_x) > 0) updateSelectInput(session, "x_var", choices = c("Please choose" = "", numeric_cols), selected = new_x[1])
     if (length(new_y) > 0) updateSelectInput(session, "y_var", choices = c("Please choose" = "", numeric_cols), selected = new_y[1])
+    if (is.null(pending_raw_data())) {
+      check_standard_concentrations(raw_data_loaded(), input$quant_kit)
+    }
   }, ignoreInit = TRUE)
   
   observeEvent(input$load_data, {
@@ -1201,6 +1246,7 @@ server <- function(input, output, session) {
       duration = NULL,
       closeButton = TRUE
     )
+    check_standard_concentrations(raw_joined, input$quant_kit)
   }
   
   # User confirmed non-5 µL standards — then check sample replicate RFUs before loading
@@ -1414,6 +1460,8 @@ server <- function(input, output, session) {
     
     x_var <- input$x_var
     y_var <- input$y_var
+    
+    # write_csv(df_model, 'df_model.csv')
     
     x_range_min <- min(df_model[[x_var]], na.rm = TRUE)
     x_range_max <- max(as.data.frame(standards_data())[[x_var]], na.rm = TRUE)
