@@ -1481,7 +1481,7 @@ server <- function(input, output, session) {
         warm_inits <- inits_from_fit(prev_fit,
                                      n_chains   = max(input$num_chains, 4),
                                      n_groups_1, n_groups_2,
-                                     shape_re = input$shape_re)
+                                     shape_re = shape_re_val)
         
         result <- run_attempt(
           num_chains    = max(input$num_chains, 4),
