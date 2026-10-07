@@ -1693,6 +1693,29 @@ server <- function(input, output, session) {
       fill_values <- distinct(colour_fill_choices, int_name, fill) %>%
         with(., set_names(fill, int_name))
       
+      # Sample types actually present in this dataset
+      shape_breaks <- unique(na.omit(as.character(quant_files_flagged$sample_type)))
+      
+      # Put samples first in the legend
+      if ("sample" %in% shape_breaks) {
+        shape_breaks <- c("sample", setdiff(shape_breaks, "sample"))
+      }
+      
+      # Assign shapes based on control type
+      shape_values <- set_names(case_when(shape_breaks == "sample" ~ 21,
+                                          str_detect(shape_breaks, "field") ~ 25,
+                                          str_detect(shape_breaks, "filter") ~ 22,
+                                          str_detect(shape_breaks, "reagent|extraction") ~ 24,
+                                          str_detect(shape_breaks, "pcr") ~ 23,
+                                          str_detect(shape_breaks, "control") ~ 21,
+                                          TRUE ~ 21),
+                                shape_breaks)
+      
+      # Samples white-filled; controls black-filled in shape legend
+      shape_fills <- if_else(str_detect(shape_breaks, "control"),
+                             "black",
+                             "white")
+      
       quant_plot <- quant_files_flagged %>%
         mutate(dna_plate_well_id = str_extract(sample_id, '_[a-zA-Z][0-9]+$') %>% str_remove('_'),
                facet_plate = str_remove(sample_id, str_c('_', dna_plate_well_id)),
@@ -1711,19 +1734,13 @@ server <- function(input, output, session) {
         geom_point(size = 1.5) +
         scale_colour_manual(values = colour_values) +
         scale_fill_manual(values = fill_values) +
-        scale_shape_manual(values = c("sample" = 'circle filled',
-                                      'control' = 'circle filled',
-                                      "extraction control" = 'triangle filled',
-                                      "field control" = 'triangle down filled',
-                                      "filter control" = 'square filled',
-                                      "pcr control" = "diamond filled"),
+        scale_shape_manual(values = shape_values,
+                           breaks = shape_breaks,
                            labels = str_to_title) +
         
         scale_linetype_manual(values = c("TRUE" = "dashed", "FALSE" = "solid"),
                               labels = c("TRUE" = "Control", "FALSE" = "Sample")) +
-        guides(shape = guide_legend(override.aes = list(fill = if_else(str_detect(unique(quant_files_flagged$sample_type), 
-                                                                                  'control'),
-                                                                       'black', 'white'),
+        guides(shape = guide_legend(override.aes = list(fill = unname(shape_fills),
                                                         size = 3)),
                fill = "none",
                colour = guide_legend(override.aes = list(size = 3))) +
